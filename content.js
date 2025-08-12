@@ -1,7 +1,6 @@
 (() => {
   // ===== State =====
-  let enabled = true; // 常時ON/OFF（Ctrl+Shift+Yで切替）
-  let holdAltToShow = false; // Alt押下で一時表示
+  let enabled = localStorage.getItem("ti-enabled") === "true"; // ボタン状態を永続化
   let mouseX = 0,
     mouseY = 0;
 
@@ -10,17 +9,14 @@
   root.id = "ti-root";
   document.documentElement.appendChild(root);
 
-  // アウトライン
   const outline = div("ti-box", { id: "ti-outline" });
   root.appendChild(outline);
 
-  // リング（4分割）
   const padRing = ring("pad", "var(--ti-padding)");
   const marRing = ring("mar", "var(--ti-margin)");
   root.appendChild(marRing.root);
   root.appendChild(padRing.root);
 
-  // サイド値ラベル
   const labels = {
     padTop: sideLabel(),
     padRight: sideLabel(),
@@ -33,62 +29,69 @@
   };
   Object.values(labels).forEach((n) => root.appendChild(n));
 
-  // ツールチップ
   const tooltip = document.createElement("div");
   tooltip.id = "ti-tooltip";
   document.body.appendChild(tooltip);
 
-  // 凡例
   const legend = document.createElement("div");
   legend.id = "ti-legend";
-  legend.innerHTML = `表示: <span>Alt押しながらホバー / Ctrl+Shift+Yでトグル</span>
+  legend.innerHTML = `
+    表示: 右下のボタンで ON/OFF
     <span class="item"><span class="sw pad"></span>Padding</span>
     <span class="item"><span class="sw mar"></span>Margin</span>
     <span class="item"><span class="sw out"></span>Element</span>`;
   document.body.appendChild(legend);
 
-  // 初期は有効
-  showUI(false);
+  // ===== 右下トグルボタン =====
+  const toggleHost = document.createElement("div");
+  toggleHost.id = "ti-toggle";
+  const toggleBtn = document.createElement("button");
+  toggleHost.appendChild(toggleBtn);
+  const hint = document.createElement("span");
+  hint.className = "hint";
+  hint.textContent = "Tailwind Inspector";
+  toggleHost.appendChild(hint);
+  document.body.appendChild(toggleHost);
 
-  // ===== Event wiring =====
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Alt") {
-      holdAltToShow = true;
-      showUI(true); // Alt押下中は表示
-    }
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "y") {
-      enabled = !enabled;
-      showUI(enabled || holdAltToShow);
-      toast(enabled ? "Tailwind Inspector: ON" : "Tailwind Inspector: OFF");
-    }
+  function updateToggleUI() {
+    toggleBtn.className = enabled ? "on" : "off";
+    toggleBtn.textContent = enabled ? "Inspector: ON" : "Inspector: OFF";
+    toggleBtn.setAttribute("aria-pressed", String(enabled));
+    showUI(enabled);
+  }
+  toggleBtn.addEventListener("click", () => {
+    enabled = !enabled;
+    localStorage.setItem("ti-enabled", String(enabled));
+    updateToggleUI();
+    toast(`Tailwind Inspector: ${enabled ? "ON" : "OFF"}`);
   });
-  document.addEventListener("keyup", (e) => {
-    if (e.key === "Alt") {
-      holdAltToShow = false;
-      showUI(enabled);
-    }
-  });
+  updateToggleUI();
 
-  document.addEventListener("mousemove", (e) => {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-    if (!isVisible()) return;
-    tooltip.style.display = "block";
-    tooltip.style.left = `${mouseX}px`;
-    tooltip.style.top = `${mouseY}px`;
-  });
+  // ===== Events =====
+  document.addEventListener(
+    "mousemove",
+    (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      if (!enabled) return;
+      tooltip.style.display = "block";
+      tooltip.style.left = `${mouseX}px`;
+      tooltip.style.top = `${mouseY}px`;
+    },
+    { passive: true }
+  );
 
   document.addEventListener(
     "mouseover",
     (e) => {
-      if (!isVisible()) return;
+      if (!enabled) return;
       const el = e.target;
       if (!(el instanceof HTMLElement)) return;
+      // トグルボタン上では検査しない
+      if (toggleHost.contains(el)) return;
       try {
         inspect(el);
-      } catch (err) {
-        // console.warn('Inspector error', err);
-      }
+      } catch {}
     },
     { capture: true }
   );
@@ -96,9 +99,9 @@
   window.addEventListener(
     "scroll",
     () => {
-      // スクロール時も追従できるよう、最後の要素を再描画
+      if (!enabled) return;
       const el = document.elementFromPoint(mouseX, mouseY);
-      if (isVisible() && el instanceof HTMLElement) inspect(el);
+      if (el instanceof HTMLElement && !toggleHost.contains(el)) inspect(el);
     },
     { passive: true }
   );
@@ -133,13 +136,13 @@
     // アウトライン
     setBox(outline, top, left, width, height);
 
-    // Marginリング（要素の外側）
+    // Margin（外側）
     setOuterRing(marRing, top, left, width, height, mar);
 
-    // Paddingリング（要素の内側）
+    // Padding（内側）
     setInnerRing(padRing, top, left, width, height, pad);
 
-    // サイド値ラベル配置
+    // ラベル
     placeSideLabels(labels, { top, left, width, height }, pad, mar);
 
     // Tooltip
@@ -161,15 +164,14 @@
     legend.style.display = "block";
   }
 
-  // ===== Helpers (DOM builders) =====
+  // ===== DOM builders =====
   function div(className, attrs = {}) {
     const d = document.createElement("div");
     if (className) d.className = className;
     for (const [k, v] of Object.entries(attrs)) d.setAttribute(k, v);
     return d;
   }
-
-  function ring(name, color) {
+  function ring(_name, color) {
     const root = div("ti-ring");
     const top = div("ti-ring-seg");
     const right = div("ti-ring-seg");
@@ -181,7 +183,6 @@
     });
     return { root, top, right, bottom, left };
   }
-
   function sideLabel() {
     const n = document.createElement("div");
     n.className = "ti-side-label";
@@ -197,31 +198,19 @@
     node.style.height = `${height}px`;
     node.style.display = "block";
   }
-
   function setOuterRing(r, top, left, w, h, m) {
-    // 上
     setBox(r.top, top - m.t, left - m.l, w + m.l + m.r, m.t);
-    // 右
     setBox(r.right, top, left + w, m.r, h);
-    // 下
     setBox(r.bottom, top + h, left - m.l, w + m.l + m.r, m.b);
-    // 左
     setBox(r.left, top, left - m.l, m.l, h);
   }
-
   function setInnerRing(r, top, left, w, h, p) {
-    // 上（要素内）
     setBox(r.top, top, left, w, p.t);
-    // 右
     setBox(r.right, top, left + w - p.r, p.r, h);
-    // 下
     setBox(r.bottom, top + h - p.b, left, w, p.b);
-    // 左
     setBox(r.left, top, left, p.l, h);
   }
-
   function placeSideLabels(lbl, rect, pad, mar) {
-    // パディングラベル
     place(
       lbl.padTop,
       rect.top - 16,
@@ -247,7 +236,6 @@
       `${pad.l}px`
     );
 
-    // マージンラベル
     place(
       lbl.marTop,
       rect.top - (pad.t + 18) - 10,
@@ -273,14 +261,12 @@
       `${mar.l}px`
     );
   }
-
   function place(node, top, left, text) {
     node.textContent = text;
     node.style.top = `${top}px`;
     node.style.left = `${left}px`;
     node.style.display = "block";
   }
-
   function hideAll() {
     outline.style.display = "none";
     [padRing, marRing].forEach((r) => {
@@ -295,19 +281,23 @@
     legend.style.display = "none";
   }
 
-  // ===== UI toggle =====
+  // ===== UI visibility =====
   function showUI(show) {
     if (show) {
       root.style.display = "block";
       legend.style.display = "block";
+      [padRing, marRing].forEach((r) => {
+        r.top.style.display =
+          r.right.style.display =
+          r.bottom.style.display =
+          r.left.style.display =
+            "block";
+      });
     } else {
       root.style.display = "none";
       legend.style.display = "none";
       tooltip.style.display = "none";
     }
-  }
-  function isVisible() {
-    return enabled || holdAltToShow;
   }
 
   // ===== Tooltip content =====
@@ -343,12 +333,10 @@
     if (!className) return "";
     return String(className)
       .split(/\s+/)
-      .filter((c) => /^[a-z0-9:_/-]+$/i.test(c)) // ざっくり
+      .filter((c) => /^[a-z0-9:_/-]+$/i.test(c))
       .join(" ");
   }
-
   function toHex(color) {
-    // RGB(A) or already HEX
     if (!color) return "";
     if (color.startsWith("#")) return color;
     const m = color.match(
@@ -364,7 +352,6 @@
   }
   const to2 = (n) => n.toString(16).padStart(2, "0");
   const clamp255 = (n) => Math.max(0, Math.min(255, Math.round(n)));
-
   function escapeHTML(s) {
     return s.replace(
       /[&<>"']/g,
@@ -379,13 +366,14 @@
     );
   }
 
-  // 画面右下に小さくトースト
+  // 小さなトースト
   let toastTimer;
   function toast(text) {
     const n = document.createElement("div");
     n.style.position = "fixed";
     n.style.bottom = "16px";
     n.style.right = "16px";
+    n.style.transform = "translateY(-48px)"; // ボタンとかぶらないよう少し上
     n.style.background = "rgba(0,0,0,0.8)";
     n.style.color = "#fff";
     n.style.padding = "8px 10px";
@@ -398,10 +386,6 @@
     toastTimer = setTimeout(() => n.remove(), 1200);
   }
 
-  // 最初は非表示にしていたセグメントを表示可能に
-  [padRing, marRing].forEach((r) => {
-    [r.top, r.right, r.bottom, r.left].forEach(
-      (seg) => (seg.style.display = "block")
-    );
-  });
+  // 初期表示状態に合わせてUIを整える
+  updateToggleUI();
 })();
