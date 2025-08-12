@@ -14,107 +14,7 @@
   pointer-events: none;
   z-index: var(--ti-z);
 }
-
-.ti-box {
-  position: absolute;
-  pointer-events: none;
-}
-
-#ti-outline {
-  border: 2px solid var(--ti-outline);
-  box-sizing: border-box;
-}
-
-.ti-ring {
-  position: absolute;
-  pointer-events: none;
-}
-
-.ti-ring-seg {
-  position: absolute;
-  pointer-events: none;
-}
-
-#ti-tooltip {
-  position: fixed;
-  background: rgba(0, 0, 0, 0.85);
-  color: #fff;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", monospace;
-  font-size: 12px;
-  line-height: 1.4;
-  padding: 8px 10px;
-  border-radius: 6px;
-  max-width: 360px;
-  white-space: pre-wrap;
-  z-index: var(--ti-z);
-  transform: translate(12px, 12px);
-  display: none;
-}
-
-#ti-tooltip .row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin: 2px 0;
-}
-
-#ti-tooltip .chip {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-#ti-legend {
-  position: fixed;
-  bottom: 10px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.75);
-  color: #fff;
-  font-size: 11px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  display: none;
-  z-index: var(--ti-z);
-}
-
-#ti-legend .item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 10px;
-}
-#ti-legend .sw {
-  width: 14px;
-  height: 10px;
-  border-radius: 2px;
-  display: inline-block;
-}
-#ti-legend .sw.pad {
-  background: var(--ti-padding);
-  border: 1px solid rgba(0, 0, 0, 0.25);
-}
-#ti-legend .sw.mar {
-  background: var(--ti-margin);
-  border: 1px solid rgba(0, 0, 0, 0.25);
-}
-#ti-legend .sw.out {
-  background: transparent;
-  border: 2px solid var(--ti-outline);
-}
-
-.ti-side-label {
-  position: absolute;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  font-size: 10px;
-  padding: 2px 4px;
-  border-radius: 4px;
-  pointer-events: none;
-}
-
-#ti-root {
+#ti-global {
   position: absolute;
   top: 0;
   left: 0;
@@ -123,6 +23,7 @@
   pointer-events: none;
   z-index: var(--ti-z);
 }
+
 .ti-box {
   position: absolute;
   pointer-events: none;
@@ -136,6 +37,7 @@
   position: absolute;
   pointer-events: none;
 }
+
 #ti-tooltip {
   position: fixed;
   background: rgba(0, 0, 0, 0.85);
@@ -167,8 +69,8 @@
 
 #ti-legend {
   position: fixed;
-  bottom: 56px;
-  right: 16px; /* ボタンの上に来るように少し上げる */
+  bottom: 90px;
+  right: 16px; /* ボタンの少し上 */
   background: rgba(0, 0, 0, 0.75);
   color: #fff;
   font-size: 11px;
@@ -212,13 +114,17 @@
   pointer-events: none;
 }
 
-/* === 右下トグルボタン === */
+/* === 右下ボタン群 === */
 #ti-toggle {
   position: fixed;
   bottom: 16px;
   right: 16px;
-  z-index: calc(var(--ti-z) + 1); /* 最高に前面 */
+  z-index: calc(var(--ti-z) + 1);
   pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: end;
 }
 #ti-toggle button {
   appearance: none;
@@ -243,6 +149,26 @@
   display: block;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.8);
-  margin-top: 4px;
   text-align: right;
+}
+
+/* 余白帯の中央に出す px ラベル */
+.ti-seg-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.25); /* 少しだけ台座 */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.ti-seg-label.v {
+  transform: translate(-50%, -50%) rotate(90deg);
 }
