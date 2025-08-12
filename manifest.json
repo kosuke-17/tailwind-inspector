@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Tailwind Inspector",
+  "version": "0.1",
+  "description": "HoverでTailwindクラスとスタイルを確認できるツール",
+  "permissions": ["activeTab", "scripting"],
+  "icons": {
+    "48": "icons/icon48.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "css": ["overlay.css"],
+      "js": ["content.js"]
+    }
+  ]
+}
