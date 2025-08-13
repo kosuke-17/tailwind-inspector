@@ -1,23 +1,35 @@
 (() => {
   // ===== Config =====
-  const MIN_LABEL_THICKNESS = 12; // px未満の帯はラベル非表示（視認性とパフォーマンス目的）
+  const MIN_LABEL_THICKNESS = 12; // 帯が細すぎる時はラベル非表示
+  const MAX_ELEMENTS = 300; // Allモードでの最大対象要素数
+  const MAX_GAP_SEGMENTS = 600; // AllモードでのGap帯セグメント上限
+  const ROW_EPS = 6; // 行/列グルーピングの許容誤差(px)
+  const COL_EPS = 6;
 
   // ===== State =====
-  let enabled = localStorage.getItem("ti-enabled") === "true"; // 表示ON/OFF
-  let inspectorMode = localStorage.getItem("ti-inspector") === "true"; // false=Hover, true=All
+  let enabled = localStorage.getItem("ti-enabled") === "true";
+  let inspectorMode = localStorage.getItem("ti-inspector") === "true";
   let mouseX = 0,
     mouseY = 0;
   let rafQueued = false;
-  const MAX_ELEMENTS = 300; // Allモードの最大描画要素数
 
   // ===== Root & Layers =====
   const root = document.createElement("div");
   root.id = "ti-root";
   document.documentElement.appendChild(root);
 
-  const globalLayer = document.createElement("div"); // インスペクターモード用
+  const globalLayer = document.createElement("div"); // インスペクターモードの描画先
   globalLayer.id = "ti-global";
   document.documentElement.appendChild(globalLayer);
+
+  // Hoverモード用レイヤ
+  const gapHoverLayer = document.createElement("div");
+  Object.assign(gapHoverLayer.style, {
+    position: "absolute",
+    pointerEvents: "none",
+    zIndex: "2147483647",
+  });
+  root.appendChild(gapHoverLayer);
 
   const outline = div("ti-box", { id: "ti-outline" });
   root.appendChild(outline);
@@ -49,6 +61,7 @@
     表示: 右下ボタンで ON/OFF・モード切替
     <span class="item"><span class="sw pad"></span>Padding</span>
     <span class="item"><span class="sw mar"></span>Margin</span>
+    <span class="item"><span class="sw gap"></span>Gap</span>
     <span class="item"><span class="sw out"></span>Element</span>`;
   document.body.appendChild(legend);
 
@@ -74,7 +87,6 @@
     btnMode.textContent = inspectorMode ? "Mode: All" : "Mode: Hover";
     btnMode.setAttribute("aria-pressed", String(inspectorMode));
 
-    // 表示制御
     if (!enabled) {
       showHoverUI(false);
       clearGlobal();
@@ -83,12 +95,12 @@
     } else {
       legend.style.display = "block";
       if (inspectorMode) {
-        showHoverUI(false); // ホバーUIはオフ
+        showHoverUI(false);
         tooltip.style.display = "none";
-        buildGlobalSoon(); // 全体描画
+        buildGlobalSoon();
       } else {
         clearGlobal();
-        showHoverUI(true); // ホバーUIはオン
+        showHoverUI(true);
       }
     }
   }
@@ -107,7 +119,7 @@
     toast(`Mode: ${inspectorMode ? "All (全要素)" : "Hover"}`);
   });
 
-  updateButtons(); // 初期反映
+  updateButtons();
 
   // ===== Events =====
   document.addEventListener(
@@ -115,7 +127,7 @@
     (e) => {
       mouseX = e.clientX;
       mouseY = e.clientY;
-      if (!enabled || inspectorMode) return; // All中はツールチップ抑制
+      if (!enabled || inspectorMode) return;
       tooltip.style.display = "block";
       tooltip.style.left = `${mouseX}px`;
       tooltip.style.top = `${mouseY}px`;
@@ -129,7 +141,7 @@
       if (!enabled || inspectorMode) return;
       const el = e.target;
       if (!(el instanceof HTMLElement)) return;
-      if (toggleHost.contains(el)) return; // 自分は無視
+      if (toggleHost.contains(el)) return;
       try {
         inspectHover(el);
       } catch {}
@@ -184,7 +196,7 @@
     // アウトライン
     setBox(outline, box.top, box.left, box.width, box.height);
 
-    // Margin（外側／値ラベルを帯の中に）
+    // Margin（外側）
     setOuterRingWithLabels(
       marRing,
       box.top,
@@ -194,7 +206,7 @@
       mar
     );
 
-    // Padding（内側／値ラベルを帯の中に）
+    // Padding（内側）
     setInnerRingWithLabels(
       padRing,
       box.top,
@@ -204,7 +216,11 @@
       pad
     );
 
-    // 外側の補助ラベル（従来のサイド値）
+    // Gap（子要素間）
+    gapHoverLayer.innerHTML = "";
+    drawGapsForContainer(el, gapHoverLayer, cs, rect);
+
+    // サイド値ラベル（従来）
     placeSideLabels(labels, box, pad, mar);
 
     // Tooltip
@@ -237,7 +253,8 @@
     const vw = window.innerWidth,
       vh = window.innerHeight;
     const els = document.querySelectorAll("body *");
-    let drawn = 0;
+    let drawn = 0,
+      gapSegs = 0;
 
     for (const el of els) {
       if (!(el instanceof HTMLElement)) continue;
@@ -256,14 +273,12 @@
 
       const hasPad = pad.t || pad.r || pad.b || pad.l;
       const hasMar = mar.t || mar.r || mar.b || mar.l;
-      if (!hasPad && !hasMar) continue;
 
       const top = rect.top + scrollY;
       const left = rect.left + scrollX;
       const width = rect.width;
       const height = rect.height;
 
-      // 余白帯＋中央ラベル
       if (hasMar) {
         globalLayer.appendChild(
           segWithLabel(
@@ -275,7 +290,7 @@
             mar.t,
             "h"
           )
-        ); // top
+        );
         globalLayer.appendChild(
           segWithLabel(
             top,
@@ -286,7 +301,7 @@
             mar.r,
             "v"
           )
-        ); // right
+        );
         globalLayer.appendChild(
           segWithLabel(
             top + height,
@@ -297,7 +312,7 @@
             mar.b,
             "h"
           )
-        ); // bottom
+        );
         globalLayer.appendChild(
           segWithLabel(
             top,
@@ -308,12 +323,12 @@
             mar.l,
             "v"
           )
-        ); // left
+        );
       }
       if (hasPad) {
         globalLayer.appendChild(
           segWithLabel(top, left, width, pad.t, "var(--ti-padding)", pad.t, "h")
-        ); // top
+        );
         globalLayer.appendChild(
           segWithLabel(
             top,
@@ -324,7 +339,7 @@
             pad.r,
             "v"
           )
-        ); // right
+        );
         globalLayer.appendChild(
           segWithLabel(
             top + height - pad.b,
@@ -335,7 +350,7 @@
             pad.b,
             "h"
           )
-        ); // bottom
+        );
         globalLayer.appendChild(
           segWithLabel(
             top,
@@ -346,12 +361,23 @@
             pad.l,
             "v"
           )
-        ); // left
+        );
       }
 
+      // Gap（子要素間）
+      gapSegs += drawGapsForContainer(
+        el,
+        globalLayer,
+        cs,
+        rect,
+        MAX_GAP_SEGMENTS - gapSegs
+      );
+
       drawn++;
-      if (drawn >= MAX_ELEMENTS) {
-        toast(`Elements capped at ${MAX_ELEMENTS} for performance`);
+      if (drawn >= MAX_ELEMENTS || gapSegs >= MAX_GAP_SEGMENTS) {
+        toast(
+          `Elements capped at ${MAX_ELEMENTS}, gap segments capped at ${MAX_GAP_SEGMENTS}`
+        );
         break;
       }
     }
@@ -361,7 +387,124 @@
     globalLayer.innerHTML = "";
   }
 
-  // ===== Builders =====
+  // ===== Gap描画 =====
+  // 戻り値: 追加したセグメント数
+  function drawGapsForContainer(
+    containerEl,
+    layer,
+    cs,
+    containerRect,
+    remainBudget = Infinity
+  ) {
+    const rowGap = parseFloat(cs.rowGap) || 0;
+    const colGap = parseFloat(cs.columnGap) || 0;
+    if (rowGap <= 0 && colGap <= 0) return 0;
+
+    // 直接の子のみ
+    const children = Array.from(containerEl.children).filter(
+      (n) =>
+        n instanceof HTMLElement &&
+        n.getBoundingClientRect().width > 0 &&
+        n.getBoundingClientRect().height > 0
+    );
+
+    if (children.length <= 1) return 0;
+
+    // rects取得（都度呼ぶと重いので1回で）
+    const rects = children.map((el) => el.getBoundingClientRect());
+    let segCount = 0;
+
+    // --- 横方向ギャップ（列間 = columnGap）---
+    if (colGap > 0) {
+      // 行でグルーピング（topが近いものを同一行とみなす）
+      const rows = groupBy(rects, (a, b) => Math.abs(a.top - b.top) <= ROW_EPS);
+      for (const row of rows) {
+        const sorted = row.sort((a, b) => a.left - b.left);
+        for (let i = 0; i < sorted.length - 1; i++) {
+          if (segCount >= remainBudget) return segCount;
+          const a = sorted[i],
+            b = sorted[i + 1];
+          // ギャップ帯の位置（真ん中に固定幅colGap）
+          const xMid = (a.right + b.left) / 2;
+          const x = xMid - colGap / 2;
+          const y = Math.min(a.top, b.top);
+          const h = Math.max(a.bottom, b.bottom) - y;
+          const seg = segWithLabel(
+            y + scrollY,
+            x + scrollX,
+            colGap,
+            h,
+            "var(--ti-gap)",
+            colGap,
+            "v" // 縦帯なので縦向きラベル
+          );
+          layer.appendChild(seg);
+          segCount++;
+        }
+      }
+    }
+
+    // --- 縦方向ギャップ（行間 = rowGap）---
+    if (rowGap > 0) {
+      // 列でグルーピング（leftが近いものを同一列とみなす）
+      const cols = groupBy(
+        rects,
+        (a, b) => Math.abs(a.left - b.left) <= COL_EPS
+      );
+      for (const col of cols) {
+        const sorted = col.sort((a, b) => a.top - b.top);
+        for (let i = 0; i < sorted.length - 1; i++) {
+          if (segCount >= remainBudget) return segCount;
+          const a = sorted[i],
+            b = sorted[i + 1];
+          const yMid = (a.bottom + b.top) / 2;
+          const y = yMid - rowGap / 2;
+          // 横幅は重なり部分。重ならない場合はコンテナ幅にフォールバック
+          let x = Math.max(a.left, b.left);
+          let w = Math.min(a.right, b.right) - x;
+          if (w <= 0) {
+            x = containerRect.left;
+            w = containerRect.width;
+          }
+          const seg = segWithLabel(
+            y + scrollY,
+            x + scrollX,
+            w,
+            rowGap,
+            "var(--ti-gap)",
+            rowGap,
+            "h" // 横帯
+          );
+          layer.appendChild(seg);
+          segCount++;
+        }
+      }
+    }
+
+    return segCount;
+  }
+
+  // rect配列を近さでグルーピング
+  function groupBy(items, closeFn) {
+    const groups = [];
+    const sorted = items
+      .slice()
+      .sort((a, b) => a.top - b.top || a.left - b.left);
+    for (const it of sorted) {
+      let found = false;
+      for (const g of groups) {
+        if (closeFn(g[0], it)) {
+          g.push(it);
+          found = true;
+          break;
+        }
+      }
+      if (!found) groups.push([it]);
+    }
+    return groups;
+  }
+
+  // ===== DOM builders =====
   function div(className, attrs = {}) {
     const d = document.createElement("div");
     if (className) d.className = className;
@@ -377,11 +520,9 @@
     const left = div("ti-ring-seg");
     [top, right, bottom, left].forEach((seg) => {
       seg.style.background = color;
-      // ラベル要素を持たせる
       const lbl = document.createElement("div");
       lbl.className = "ti-seg-label";
       seg.appendChild(lbl);
-      // プロパティとして保持（expando）
       seg._label = lbl;
       root.appendChild(seg);
     });
@@ -404,6 +545,11 @@
     valuePx,
     orientation /* 'h'|'v' */
   ) {
+    if (width <= 0 || height <= 0) {
+      const d = document.createElement("div");
+      d.style.display = "none";
+      return d;
+    }
     const d = document.createElement("div");
     d.style.position = "absolute";
     d.style.pointerEvents = "none";
@@ -433,37 +579,29 @@
   }
 
   function setOuterRingWithLabels(r, top, left, w, h, m) {
-    // 上
     setBox(r.top, top - m.t, left - m.l, w + m.l + m.r, m.t);
     setSegLabel(r.top, m.t, "h");
-    // 右
     setBox(r.right, top, left + w, m.r, h);
     setSegLabel(r.right, m.r, "v");
-    // 下
     setBox(r.bottom, top + h, left - m.l, w + m.l + m.r, m.b);
     setSegLabel(r.bottom, m.b, "h");
-    // 左
     setBox(r.left, top, left - m.l, m.l, h);
     setSegLabel(r.left, m.l, "v");
   }
 
   function setInnerRingWithLabels(r, top, left, w, h, p) {
-    // 上
     setBox(r.top, top, left, w, p.t);
     setSegLabel(r.top, p.t, "h");
-    // 右
     setBox(r.right, top, left + w - p.r, p.r, h);
     setSegLabel(r.right, p.r, "v");
-    // 下
     setBox(r.bottom, top + h - p.b, left, w, p.b);
     setSegLabel(r.bottom, p.b, "h");
-    // 左
     setBox(r.left, top, left, p.l, h);
     setSegLabel(r.left, p.l, "v");
   }
 
-  function setSegLabel(segEl, valuePx, orientation /* 'h'|'v' */) {
-    const lbl = segEl._label; // ring() 内で付与
+  function setSegLabel(segEl, valuePx, orientation) {
+    const lbl = segEl._label;
     if (!lbl) return;
     if (valuePx >= MIN_LABEL_THICKNESS) {
       lbl.textContent = `${Math.round(valuePx)}px`;
@@ -548,6 +686,7 @@
     });
     Object.values(labels).forEach((n) => (n.style.display = "none"));
     tooltip.style.display = "none";
+    gapHoverLayer.innerHTML = "";
   }
 
   function showHoverUI(show) {
@@ -599,6 +738,7 @@
       .filter((c) => /^[a-z0-9:_/-]+$/i.test(c))
       .join(" ");
   }
+
   function toHex(color) {
     if (!color) return "";
     if (color.startsWith("#")) return color;
@@ -636,7 +776,7 @@
     n.style.position = "fixed";
     n.style.bottom = "16px";
     n.style.right = "16px";
-    n.style.transform = "translateY(-64px)"; // ボタンと被らないよう少し上
+    n.style.transform = "translateY(-64px)";
     n.style.background = "rgba(0,0,0,0.8)";
     n.style.color = "#fff";
     n.style.padding = "8px 10px";

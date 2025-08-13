@@ -1,7 +1,8 @@
 :root {
   --ti-z: 2147483647;
   --ti-padding: rgba(0, 128, 255, 0.35); /* 青: Padding */
-  --ti-margin: rgba(255, 165, 0, 0.35); /* オレンジ: Margin */
+  --ti-margin: rgba(255, 165, 0, 0.35); /* 橙: Margin */
+  --ti-gap: rgba(168, 85, 247, 0.35); /* 紫: Gap */
   --ti-outline: #22c55e; /* 緑 */
 }
 
@@ -70,7 +71,7 @@
 #ti-legend {
   position: fixed;
   bottom: 90px;
-  right: 16px; /* ボタンの少し上 */
+  right: 16px;
   background: rgba(0, 0, 0, 0.75);
   color: #fff;
   font-size: 11px;
@@ -99,6 +100,10 @@
   background: var(--ti-margin);
   border: 1px solid rgba(0, 0, 0, 0.25);
 }
+#ti-legend .gap {
+  background: var(--ti-gap);
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
 #ti-legend .out {
   background: transparent;
   border: 2px solid var(--ti-outline);
@@ -114,7 +119,28 @@
   pointer-events: none;
 }
 
-/* === 右下ボタン群 === */
+/* 余白帯の中央に出す px ラベル（Padding/Margin/Gap共通） */
+.ti-seg-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.25);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.ti-seg-label.v {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+/* 右下ボタン群 */
 #ti-toggle {
   position: fixed;
   bottom: 16px;
@@ -141,34 +167,13 @@
 }
 #ti-toggle button.on {
   background: #16a34a;
-} /* ON: 緑 */
+}
 #ti-toggle button.off {
   background: #374151;
-} /* OFF: グレー */
+}
 #ti-toggle .hint {
   display: block;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.8);
   text-align: right;
-}
-
-/* 余白帯の中央に出す px ラベル */
-.ti-seg-label {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  padding: 2px 4px;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.25); /* 少しだけ台座 */
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-  pointer-events: none;
-  white-space: nowrap;
-}
-.ti-seg-label.v {
-  transform: translate(-50%, -50%) rotate(90deg);
 }
