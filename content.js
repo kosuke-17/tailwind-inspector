@@ -12,6 +12,8 @@
   let mouseX = 0,
     mouseY = 0;
   let rafQueued = false;
+  // 新規: レジェンド表示状態（デフォルトtrue）
+  let legendVisible = localStorage.getItem("ti-legend-visible") !== "false";
 
   // ===== Root & Layers =====
   const root = document.createElement("div");
@@ -70,11 +72,13 @@
   toggleHost.id = "ti-toggle";
   const btnPower = document.createElement("button");
   const btnMode = document.createElement("button");
+  const btnLegend = document.createElement("button");
   const hint = document.createElement("span");
   hint.className = "hint";
   hint.textContent = "Tailwind Inspector";
   toggleHost.appendChild(btnPower);
   toggleHost.appendChild(btnMode);
+  toggleHost.appendChild(btnLegend);
   toggleHost.appendChild(hint);
   document.body.appendChild(toggleHost);
 
@@ -87,13 +91,18 @@
     btnMode.textContent = inspectorMode ? "Mode: All" : "Mode: Hover";
     btnMode.setAttribute("aria-pressed", String(inspectorMode));
 
+    // 新規: Legend表示トグル
+    btnLegend.className = legendVisible ? "on" : "off";
+    btnLegend.textContent = legendVisible ? "説明: ON" : "説明: OFF";
+    btnLegend.setAttribute("aria-pressed", String(legendVisible));
+
     if (!enabled) {
       showHoverUI(false);
       clearGlobal();
       legend.style.display = "none";
       tooltip.style.display = "none";
     } else {
-      legend.style.display = "block";
+      legend.style.display = legendVisible ? "block" : "none";
       if (inspectorMode) {
         showHoverUI(false);
         tooltip.style.display = "none";
@@ -117,6 +126,14 @@
     localStorage.setItem("ti-inspector", String(inspectorMode));
     updateButtons();
     toast(`Mode: ${inspectorMode ? "All (全要素)" : "Hover"}`);
+  });
+
+  // 新規: Legend表示トグルのイベント
+  btnLegend.addEventListener("click", () => {
+    legendVisible = !legendVisible;
+    localStorage.setItem("ti-legend-visible", String(legendVisible));
+    updateButtons();
+    toast(`説明: ${legendVisible ? "ON" : "OFF"}`);
   });
 
   updateButtons();
@@ -735,7 +752,7 @@
     if (!className) return "";
     return String(className)
       .split(/\s+/)
-      .filter((c) => /^[a-z0-9:_/-]+$/i.test(c))
+      .filter((c) => /^[a-z0-9:_\/-]+$/i.test(c))
       .join(" ");
   }
 
