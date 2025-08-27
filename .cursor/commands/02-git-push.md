@@ -10,42 +10,54 @@ Push the committed changes to the remote repository.
 
 ## GIT COMMANDS IMPLEMENTATION
 
-### Step 1: Detect current branch
+### Step 1: Determine target branch
 
 ```bash
-git rev-parse --abbrev-ref HEAD
+# If args provided → use specified branch
+TARGET_BRANCH={provided_arg}
+
+# Else → detect current branch
+TARGET_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 ```
 
-### Step 2: Check commits
+### Step 2: Validate target branch
 
 ```bash
-git log origin/$(git rev-parse --abbrev-ref HEAD)..HEAD --oneline
+# Check if target branch exists locally
+git show-ref --verify --quiet refs/heads/$TARGET_BRANCH
+# If not exists → error: "ブランチ '$TARGET_BRANCH' が存在しません"
 ```
 
-### Step 3: Push to remote
+### Step 3: Check commits
 
 ```bash
-# If first push for this branch
+git log origin/$TARGET_BRANCH..$TARGET_BRANCH --oneline 2>/dev/null || echo "Initial push"
+```
 
-git push -u origin <branch>
+### Step 4: Push to remote
+
+```bash
+# If first push for this branch (remote branch doesn't exist)
+git push -u origin $TARGET_BRANCH
 
 # Else (branch already exists on remote)
-
-git push origin <branch>
+git push origin $TARGET_BRANCH
 ```
-
-### Step 4: Confirmation
-
-- Show branch name and commits to be pushed
 
 ## USAGE EXAMPLES
 
 ```bash
 # Push current branch (auto detect)
-git push -u origin feature/add-login
+/git-push
+# → git push origin main
 
-# Push explicitly specified branch
-git push origin hotfix/fix-typo
+# Push specified branch
+/git-push feature/add-login
+# → git push origin feature/add-login
+
+# Push to different remote branch
+/git-push hotfix/fix-typo
+# → git push origin hotfix/fix-typo
 ```
 
 NOTES
