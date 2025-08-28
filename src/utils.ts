@@ -1,6 +1,6 @@
 import { Sides } from "./types";
 
-export const MIN_LABEL_THICKNESS = 12;
+export const MIN_LABEL_THICKNESS = 8; // 8pxのmarginでもラベルを表示
 export const MAX_ELEMENTS = 300;
 export const MAX_GAP_SEGMENTS = 600;
 export const ROW_EPS = 6;
@@ -26,6 +26,120 @@ export function extractTailwindClasses(className: string): string {
     .split(/\s+/)
     .filter((c) => /^[a-z0-9:_\/-]+$/i.test(c))
     .join(" ");
+}
+
+/**
+ * Tailwind CSSが読み込まれているかどうかを検出
+ */
+export function detectTailwindCSS(): boolean {
+  try {
+    // 既知のTailwindクラスでテスト要素を作成
+    const testElement = document.createElement("div");
+    testElement.className = "m-4 p-4 bg-red-500";
+    testElement.style.position = "absolute";
+    testElement.style.visibility = "hidden";
+    testElement.style.pointerEvents = "none";
+
+    document.body.appendChild(testElement);
+    const computedStyle = getComputedStyle(testElement);
+
+    // Tailwindの具体的な値をチェック: margin: 1rem (16px), padding: 1rem (16px)
+    const marginValue = parseFloat(computedStyle.marginTop);
+    const paddingValue = parseFloat(computedStyle.paddingTop);
+    const backgroundColor = computedStyle.backgroundColor;
+
+    document.body.removeChild(testElement);
+
+    // より厳密な条件: 16pxの値またはred色が確実に適用されている
+    const hasCorrectMargin = marginValue === 16;
+    const hasCorrectPadding = paddingValue === 16;
+    const hasRedBackground =
+      backgroundColor.includes("rgb(239, 68, 68)") || // bg-red-500
+      backgroundColor.includes("rgb(220, 38, 38)") ||
+      backgroundColor.includes("#ef4444") ||
+      backgroundColor.includes("#dc2626");
+
+    return hasCorrectMargin || hasCorrectPadding || hasRedBackground;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Tailwind CSSが読み込まれていない場合のフォールバック値マッピング
+ */
+const TAILWIND_FALLBACK_MAP: Record<
+  string,
+  { margin?: number; padding?: number }
+> = {
+  // Margin classes
+  "m-0": { margin: 0 },
+  "m-1": { margin: 4 },
+  "m-2": { margin: 8 },
+  "m-3": { margin: 12 },
+  "m-4": { margin: 16 },
+  "m-5": { margin: 20 },
+  "m-6": { margin: 24 },
+  "m-8": { margin: 32 },
+  "m-10": { margin: 40 },
+  "m-12": { margin: 48 },
+  "m-16": { margin: 64 },
+  "m-20": { margin: 80 },
+  "m-24": { margin: 96 },
+  "m-32": { margin: 128 },
+
+  // Padding classes
+  "p-0": { padding: 0 },
+  "p-1": { padding: 4 },
+  "p-2": { padding: 8 },
+  "p-3": { padding: 12 },
+  "p-4": { padding: 16 },
+  "p-5": { padding: 20 },
+  "p-6": { padding: 24 },
+  "p-8": { padding: 32 },
+  "p-10": { padding: 40 },
+  "p-12": { padding: 48 },
+  "p-16": { padding: 64 },
+  "p-20": { padding: 80 },
+  "p-24": { padding: 96 },
+  "p-32": { padding: 128 },
+};
+
+/**
+ * TailwindクラスからCSSが適用されていない場合の推定値を取得
+ */
+export function getTailwindFallbackValues(className: string): {
+  margin: Sides;
+  padding: Sides;
+} {
+  const classes = extractTailwindClasses(className).split(/\s+/);
+  let marginValue = 0;
+  let paddingValue = 0;
+
+  for (const cls of classes) {
+    // Remove responsive and state prefixes (e.g., "sm:", "hover:")
+    const baseClass = cls.replace(/^[a-z]+:/, "");
+    const fallback = TAILWIND_FALLBACK_MAP[baseClass];
+
+    if (fallback) {
+      if (fallback.margin !== undefined) {
+        marginValue = fallback.margin;
+      }
+      if (fallback.padding !== undefined) {
+        paddingValue = fallback.padding;
+      }
+    }
+  }
+
+  return {
+    margin: { t: marginValue, r: marginValue, b: marginValue, l: marginValue },
+    padding: {
+      t: paddingValue,
+      r: paddingValue,
+      b: paddingValue,
+      l: paddingValue,
+    },
+  };
 }
 
 export function toHex(color: string): string {
@@ -96,7 +210,7 @@ export function createSegmentWithLabel(
     d.style.display = "none";
     return d;
   }
-  
+
   const d = document.createElement("div");
   Object.assign(d.style, {
     position: "absolute",
@@ -154,11 +268,11 @@ export function throttle<T extends (...args: any[]) => any>(
   delay: number
 ): (...args: Parameters<T>) => void {
   let inThrottle: boolean;
-  return function(this: any, ...args: Parameters<T>) {
+  return function (this: any, ...args: Parameters<T>) {
     if (!inThrottle) {
       func.apply(this, args);
       inThrottle = true;
-      setTimeout(() => inThrottle = false, delay);
+      setTimeout(() => (inThrottle = false), delay);
     }
   };
 }
@@ -168,7 +282,7 @@ export function debounce<T extends (...args: any[]) => any>(
   delay: number
 ): (...args: Parameters<T>) => void {
   let timeoutId: number;
-  return function(this: any, ...args: Parameters<T>) {
+  return function (this: any, ...args: Parameters<T>) {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func.apply(this, args), delay);
   };

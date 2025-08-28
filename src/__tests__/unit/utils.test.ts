@@ -6,6 +6,8 @@ import {
   escapeHTML,
   debounce,
   createToast,
+  detectTailwindCSS,
+  getTailwindFallbackValues,
 } from "../../utils";
 
 describe("Utils Functions", () => {
@@ -224,6 +226,56 @@ describe("Utils Functions", () => {
       expect(document.querySelector("div")).toBeFalsy();
 
       vi.useRealTimers();
+    });
+  });
+
+  describe("detectTailwindCSS", () => {
+    it("should return false when Tailwind CSS is not loaded", () => {
+      // JSDOMテスト環境ではTailwind CSSが読み込まれていない
+      const result = detectTailwindCSS();
+      expect(result).toBe(false);
+    });
+  });
+
+  describe("getTailwindFallbackValues", () => {
+    it("should return fallback values for m-2 class", () => {
+      const result = getTailwindFallbackValues("m-2");
+      expect(result).toEqual({
+        margin: { t: 8, r: 8, b: 8, l: 8 },
+        padding: { t: 0, r: 0, b: 0, l: 0 },
+      });
+    });
+
+    it("should return fallback values for p-4 class", () => {
+      const result = getTailwindFallbackValues("p-4");
+      expect(result).toEqual({
+        margin: { t: 0, r: 0, b: 0, l: 0 },
+        padding: { t: 16, r: 16, b: 16, l: 16 },
+      });
+    });
+
+    it("should handle multiple classes", () => {
+      const result = getTailwindFallbackValues("m-2 p-4");
+      expect(result).toEqual({
+        margin: { t: 8, r: 8, b: 8, l: 8 },
+        padding: { t: 16, r: 16, b: 16, l: 16 },
+      });
+    });
+
+    it("should handle responsive prefixes", () => {
+      const result = getTailwindFallbackValues("sm:m-4 lg:p-6");
+      expect(result).toEqual({
+        margin: { t: 16, r: 16, b: 16, l: 16 },
+        padding: { t: 24, r: 24, b: 24, l: 24 },
+      });
+    });
+
+    it("should return zero values for unknown classes", () => {
+      const result = getTailwindFallbackValues("unknown-class");
+      expect(result).toEqual({
+        margin: { t: 0, r: 0, b: 0, l: 0 },
+        padding: { t: 0, r: 0, b: 0, l: 0 },
+      });
     });
   });
 });

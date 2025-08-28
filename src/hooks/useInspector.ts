@@ -6,6 +6,8 @@ import {
   createToast,
   createSegmentWithLabel,
   debounce,
+  detectTailwindCSS,
+  getTailwindFallbackValues,
 } from "../utils";
 
 export const useInspector = () => {
@@ -71,10 +73,37 @@ export const useInspector = () => {
         }
 
         const cs = getComputedStyle(el);
-        const pad = toSides(cs, "padding");
-        const mar = toSides(cs, "margin");
+        let pad = toSides(cs, "padding");
+        let mar = toSides(cs, "margin");
 
         const classes = extractTailwindClasses(el.className);
+
+        // Tailwindが読み込まれていない場合、フォールバック値を使用
+        const hasTailwindCSS = detectTailwindCSS();
+        if (classes && !hasTailwindCSS) {
+          const fallbackValues = getTailwindFallbackValues(el.className);
+
+          // デバッグログ
+          console.log("Tailwind Inspector Debug (mouseOver):", {
+            element: el,
+            classes,
+            originalMargin: mar,
+            originalPadding: pad,
+            fallbackValues,
+            hasTailwindCSS,
+          });
+
+          // 計算されたmargin/paddingが0の場合のみフォールバック値を適用
+          if (mar.t === 0 && mar.r === 0 && mar.b === 0 && mar.l === 0) {
+            mar = fallbackValues.margin;
+          }
+          if (pad.t === 0 && pad.r === 0 && pad.b === 0 && pad.l === 0) {
+            pad = fallbackValues.padding;
+          }
+
+          console.log("Applied values (mouseOver):", { mar, pad });
+        }
+
         setTooltipData({
           classes,
           fg: cs.color,
@@ -109,10 +138,24 @@ export const useInspector = () => {
           }
 
           const cs = getComputedStyle(el);
-          const pad = toSides(cs, "padding");
-          const mar = toSides(cs, "margin");
+          let pad = toSides(cs, "padding");
+          let mar = toSides(cs, "margin");
 
           const classes = extractTailwindClasses(el.className);
+
+          // Tailwindが読み込まれていない場合、フォールバック値を使用
+          if (classes && !detectTailwindCSS()) {
+            const fallbackValues = getTailwindFallbackValues(el.className);
+
+            // 計算されたmargin/paddingが0の場合のみフォールバック値を適用
+            if (mar.t === 0 && mar.r === 0 && mar.b === 0 && mar.l === 0) {
+              mar = fallbackValues.margin;
+            }
+            if (pad.t === 0 && pad.r === 0 && pad.b === 0 && pad.l === 0) {
+              pad = fallbackValues.padding;
+            }
+          }
+
           setTooltipData({
             classes,
             fg: cs.color,
