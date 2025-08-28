@@ -9,7 +9,7 @@ interface ToggleButtonsProps {
   onToggleLegend: () => void;
 }
 
-export const ToggleButtons: React.FC<ToggleButtonsProps> = ({
+export const ToggleButtons: React.FC<ToggleButtonsProps> = React.memo(({
   enabled,
   inspectorMode,
   legendVisible,
@@ -43,4 +43,4 @@ export const ToggleButtons: React.FC<ToggleButtonsProps> = ({
       <span className='hint'>Tailwind Inspector By React Output</span>
     </div>
   );
-};
+});

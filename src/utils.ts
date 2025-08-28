@@ -82,6 +82,54 @@ export function groupBy<T>(
   return groups;
 }
 
+export function createSegmentWithLabel(
+  top: number,
+  left: number,
+  width: number,
+  height: number,
+  color: string,
+  valuePx: number,
+  orientation: "h" | "v"
+): HTMLDivElement {
+  if (width <= 0 || height <= 0) {
+    const d = document.createElement("div");
+    d.style.display = "none";
+    return d;
+  }
+  
+  const d = document.createElement("div");
+  Object.assign(d.style, {
+    position: "absolute",
+    pointerEvents: "none",
+    zIndex: "2147483647",
+    backgroundColor: color,
+    top: `${top}px`,
+    left: `${left}px`,
+    width: `${width}px`,
+    height: `${height}px`,
+  });
+
+  if (valuePx >= MIN_LABEL_THICKNESS) {
+    const lbl = document.createElement("div");
+    lbl.className = "ti-seg-label" + (orientation === "v" ? " v" : "");
+    Object.assign(lbl.style, {
+      position: "absolute",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      color: "#fff",
+      fontSize: "10px",
+      fontWeight: "500",
+      textShadow: "0 0 2px rgba(0,0,0,0.8)",
+      whiteSpace: "nowrap",
+      writingMode: orientation === "v" ? "vertical-lr" : "initial",
+    });
+    lbl.textContent = `${Math.round(valuePx)}px`;
+    d.appendChild(lbl);
+  }
+  return d;
+}
+
 export function createToast(text: string): void {
   const n = document.createElement("div");
   Object.assign(n.style, {
@@ -99,4 +147,29 @@ export function createToast(text: string): void {
   n.textContent = text;
   document.body.appendChild(n);
   setTimeout(() => n.remove(), 1400);
+}
+
+export function throttle<T extends (...args: any[]) => any>(
+  func: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let inThrottle: boolean;
+  return function(this: any, ...args: Parameters<T>) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, delay);
+    }
+  };
+}
+
+export function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let timeoutId: number;
+  return function(this: any, ...args: Parameters<T>) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func.apply(this, args), delay);
+  };
 }

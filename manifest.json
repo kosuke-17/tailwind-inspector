@@ -3,9 +3,13 @@
   "name": "Tailwind Inspector",
   "version": "0.1",
   "description": "HoverでTailwindクラスとスタイルを確認できるツール",
-  "permissions": ["activeTab", "scripting"],
+  "permissions": ["activeTab", "scripting", "storage"],
   "icons": {
     "48": "icons/icon48.png"
+  },
+  "background": {
+    "service_worker": "dist/background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
