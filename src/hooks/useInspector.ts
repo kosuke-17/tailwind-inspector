@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { TooltipData } from "../types";
 import {
   toSides,
-  extractTailwindClasses,
   createToast,
   createSegmentWithLabel,
   debounce,
 } from "../utils";
+import { TailwindClass } from "../core/domain/model/TailwindClass";
 
 export const useInspector = () => {
   const [enabled, setEnabled] = useState(() => {
@@ -74,7 +74,7 @@ export const useInspector = () => {
         const pad = toSides(cs, "padding");
         const mar = toSides(cs, "margin");
 
-        const classes = extractTailwindClasses(el.className);
+        const classes = TailwindClass.parse(el.className).map((c) => c.toString()).join(" ");
         setTooltipData({
           classes,
           fg: cs.color,
@@ -112,7 +112,7 @@ export const useInspector = () => {
           const pad = toSides(cs, "padding");
           const mar = toSides(cs, "margin");
 
-          const classes = extractTailwindClasses(el.className);
+          const classes = TailwindClass.parse(el.className).map((c) => c.toString()).join(" ");
           setTooltipData({
             classes,
             fg: cs.color,

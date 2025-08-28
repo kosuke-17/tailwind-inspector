@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   toSides,
-  extractTailwindClasses,
   toHex,
   escapeHTML,
   debounce,
@@ -65,36 +64,6 @@ describe("Utils Functions", () => {
     });
   });
 
-  describe("extractTailwindClasses", () => {
-    it("should extract valid Tailwind classes", () => {
-      const className =
-        "bg-red-500 text-white p-4 hover:bg-red-600 custom-class";
-      const result = extractTailwindClasses(className);
-      expect(result).toBe(
-        "bg-red-500 text-white p-4 hover:bg-red-600 custom-class"
-      );
-    });
-
-    it("should filter out invalid class names", () => {
-      const className = "bg-red-500 @invalid!class text-white p-4";
-      const result = extractTailwindClasses(className);
-      expect(result).toBe("bg-red-500 text-white p-4");
-    });
-
-    it("should handle empty or null input", () => {
-      expect(extractTailwindClasses("")).toBe("");
-      expect(extractTailwindClasses(null as any)).toBe("");
-      expect(extractTailwindClasses(undefined as any)).toBe("");
-    });
-
-    it("should handle responsive and pseudo-class prefixes", () => {
-      const className =
-        "sm:bg-blue-500 md:text-lg lg:p-8 hover:scale-105 focus:ring-2";
-      const result = extractTailwindClasses(className);
-      expect(result).toBe(
-        "sm:bg-blue-500 md:text-lg lg:p-8 hover:scale-105 focus:ring-2"
-      );
-    });
   });
 
   describe("toHex", () => {

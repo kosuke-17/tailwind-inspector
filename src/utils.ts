@@ -20,13 +20,6 @@ export function toSides(cs: CSSStyleDeclaration, prop: string): Sides {
   };
 }
 
-export function extractTailwindClasses(className: string): string {
-  if (!className) return "";
-  return String(className)
-    .split(/\s+/)
-    .filter((c) => /^[a-z0-9:_\/-]+$/i.test(c))
-    .join(" ");
-}
 
 export function toHex(color: string): string {
   if (!color) return "";
