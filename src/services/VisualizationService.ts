@@ -1,5 +1,11 @@
 import { Sides } from "../types";
-import { toSides } from "../utils";
+import {
+  toSides,
+  createSegmentWithLabel,
+  MIN_LABEL_THICKNESS,
+  MAX_ELEMENTS,
+  MAX_GAP_SEGMENTS,
+} from "../utils";
 
 export interface IVisualizationService {
   createPaddingOverlay(rect: DOMRect, pad: Sides): HTMLDivElement;
@@ -126,43 +132,163 @@ export class VisualizationService implements IVisualizationService {
   renderAllElements(container: HTMLDivElement): void {
     container.innerHTML = "";
 
-    const allElements = document.querySelectorAll(this.EXCLUDE_SELECTOR);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const els = document.querySelectorAll("body *");
+    let drawn = 0;
+    let gapSegs = 0;
 
-    allElements.forEach((element) => {
-      const el = element as HTMLElement;
-      try {
-        const rect = el.getBoundingClientRect();
-        if (rect.width === 0 && rect.height === 0) return;
+    for (const el of els) {
+      if (!(el instanceof HTMLElement)) continue;
+      if (el.closest("#ti-toggle")) continue;
+      if (el.id && el.id.startsWith("ti-")) continue;
+      if ([...el.classList].some((c) => c.startsWith("ti-"))) continue;
 
-        const cs = getComputedStyle(el);
-        const pad = toSides(cs, "padding");
-        const mar = toSides(cs, "margin");
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) continue;
+      if (rect.bottom < 0 || rect.right < 0 || rect.top > vh || rect.left > vw)
+        continue;
 
-        // padding の可視化
-        if (pad.t > 0 || pad.r > 0 || pad.b > 0 || pad.l > 0) {
-          const paddingOverlay = this.createPaddingOverlay(rect, pad);
-          container.appendChild(paddingOverlay);
+      const cs = getComputedStyle(el);
+      const pad = toSides(cs, "padding");
+      const mar = toSides(cs, "margin");
+
+      const hasPad = pad.t || pad.r || pad.b || pad.l;
+      const hasMar = mar.t || mar.r || mar.b || mar.l;
+
+      const top = rect.top + window.scrollY;
+      const left = rect.left + window.scrollX;
+      const width = rect.width;
+      const height = rect.height;
+
+      // Margin segments using new createSegmentWithLabel approach
+      if (hasMar) {
+        // Top margin
+        if (mar.t > 0) {
+          container.appendChild(
+            createSegmentWithLabel(
+              top - mar.t,
+              left - mar.l,
+              width + mar.l + mar.r,
+              mar.t,
+              "var(--ti-margin)",
+              mar.t,
+              "h"
+            )
+          );
         }
-
-        // margin の可視化
-        if (mar.t > 0 || mar.r > 0 || mar.b > 0 || mar.l > 0) {
-          const marginOverlay = this.createMarginOverlay(rect, mar);
-          container.appendChild(marginOverlay);
+        // Right margin
+        if (mar.r > 0) {
+          container.appendChild(
+            createSegmentWithLabel(
+              top,
+              left + width,
+              mar.r,
+              height,
+              "var(--ti-margin)",
+              mar.r,
+              "v"
+            )
+          );
         }
-
-        // gap の可視化
-        const gapOverlay = this.createGapOverlay(rect, cs);
-        if (gapOverlay) {
-          container.appendChild(gapOverlay);
+        // Bottom margin
+        if (mar.b > 0) {
+          container.appendChild(
+            createSegmentWithLabel(
+              top + height,
+              left - mar.l,
+              width + mar.l + mar.r,
+              mar.b,
+              "var(--ti-margin)",
+              mar.b,
+              "h"
+            )
+          );
         }
-
-        // 要素のアウトライン
-        const outlineOverlay = this.createElementOutline(rect);
-        container.appendChild(outlineOverlay);
-      } catch (error) {
-        // エラーは無視
+        // Left margin
+        if (mar.l > 0) {
+          container.appendChild(
+            createSegmentWithLabel(
+              top,
+              left - mar.l,
+              mar.l,
+              height,
+              "var(--ti-margin)",
+              mar.l,
+              "v"
+            )
+          );
+        }
       }
-    });
+
+      // Padding segments using new createSegmentWithLabel approach
+      if (hasPad) {
+        // Top padding
+        if (pad.t > 0) {
+          container.appendChild(
+            createSegmentWithLabel(
+              top,
+              left,
+              width,
+              pad.t,
+              "var(--ti-padding)",
+              pad.t,
+              "h"
+            )
+          );
+        }
+        // Right padding
+        if (pad.r > 0) {
+          container.appendChild(
+            createSegmentWithLabel(
+              top,
+              left + width - pad.r,
+              pad.r,
+              height,
+              "var(--ti-padding)",
+              pad.r,
+              "v"
+            )
+          );
+        }
+        // Bottom padding
+        if (pad.b > 0) {
+          container.appendChild(
+            createSegmentWithLabel(
+              top + height - pad.b,
+              left,
+              width,
+              pad.b,
+              "var(--ti-padding)",
+              pad.b,
+              "h"
+            )
+          );
+        }
+        // Left padding
+        if (pad.l > 0) {
+          container.appendChild(
+            createSegmentWithLabel(
+              top,
+              left,
+              pad.l,
+              height,
+              "var(--ti-padding)",
+              pad.l,
+              "v"
+            )
+          );
+        }
+      }
+
+      // Gap drawing would be added here in future
+      // gapSegs += drawGapsForContainer(el, container, cs, rect, MAX_GAP_SEGMENTS - gapSegs);
+
+      drawn++;
+      if (drawn >= MAX_ELEMENTS || gapSegs >= MAX_GAP_SEGMENTS) {
+        break;
+      }
+    }
   }
 
   private createPaddingLabel(pad: Sides): HTMLDivElement {

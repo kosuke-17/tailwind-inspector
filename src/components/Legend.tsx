@@ -4,7 +4,7 @@ interface LegendProps {
   visible: boolean;
 }
 
-export const Legend: React.FC<LegendProps> = ({ visible }) => {
+export const Legend: React.FC<LegendProps> = React.memo(({ visible }) => {
   if (!visible) return null;
 
   return (
@@ -40,4 +40,4 @@ export const Legend: React.FC<LegendProps> = ({ visible }) => {
       </span>
     </div>
   );
-};
+});

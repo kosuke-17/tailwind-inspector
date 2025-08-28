@@ -37,8 +37,7 @@ export const useInspectorRefactored = (
   // アクション管理
   const { toggleEnabled, toggleMode, toggleLegend } = useInspectorActions(
     inspectorState,
-    inspectorActions,
-    buildGlobalSoon
+    inspectorActions
   );
 
   // イベントハンドラー設定
@@ -52,7 +51,11 @@ export const useInspectorRefactored = (
 
     const handleMouseOver = (e: Event) => {
       if (!inspectorState.enabled || inspectorState.inspectorMode) return;
-      eventService.handleMouseOver(e, tooltipActions.setTooltipData);
+      eventService.handleMouseOver(
+        e, 
+        tooltipActions.setTooltipData, 
+        tooltipActions.setHoverElement
+      );
     };
 
     const handleScroll = () => {
@@ -61,17 +64,16 @@ export const useInspectorRefactored = (
         inspectorState.inspectorMode,
         tooltipState.mousePosition,
         tooltipActions.setTooltipData,
+        tooltipActions.setHoverElement,
         buildGlobalSoon
       );
     };
 
-    const handleResize = () => {
-      eventService.handleResize(
-        inspectorState.enabled,
-        inspectorState.inspectorMode,
-        buildGlobalSoon
-      );
-    };
+    const handleResize = eventService.createDebouncedResize(
+      inspectorState.enabled,
+      inspectorState.inspectorMode,
+      buildGlobalSoon
+    );
 
     const cleanup = domService.setupEventListeners({
       onMouseMove: handleMouseMove,
@@ -111,6 +113,7 @@ export const useInspectorRefactored = (
     tooltipData: tooltipState.tooltipData,
     tooltipVisible: tooltipState.tooltipVisible,
     mousePosition: tooltipState.mousePosition,
+    hoverElement: tooltipState.hoverElement,
     globalLayerRef,
     toggleEnabled,
     toggleMode,

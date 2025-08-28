@@ -8,17 +8,20 @@ export const useTooltipState = () => {
   } | null>(null);
   const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);
   const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [hoverElement, setHoverElement] = useState<Element | null>(null);
 
   return {
     state: {
       mousePosition,
       tooltipData,
       tooltipVisible,
+      hoverElement,
     },
     actions: {
       setMousePosition,
       setTooltipData,
       setTooltipVisible,
+      setHoverElement,
     },
   };
 };

@@ -1,5 +1,5 @@
 import { TooltipData } from "../types";
-import { toSides, extractTailwindClasses } from "../utils";
+import { toSides, extractTailwindClasses, debounce } from "../utils";
 
 export interface IEventService {
   handleMouseMove(
@@ -34,14 +34,18 @@ export class EventService implements IEventService {
 
   handleMouseOver(
     e: Event,
-    onTooltipChange: (data: TooltipData | null) => void
+    onTooltipChange: (data: TooltipData | null) => void,
+    onHoverElementChange: (element: Element | null) => void
   ): void {
     const el = e.target as HTMLElement;
     if (!el || el.closest("#ti-toggle")) return;
 
     try {
       const rect = el.getBoundingClientRect();
-      if (rect.width === 0 && rect.height === 0) return;
+      if (rect.width === 0 && rect.height === 0) {
+        onHoverElementChange(null);
+        return;
+      }
 
       const cs = getComputedStyle(el);
       const pad = toSides(cs, "padding");
@@ -58,8 +62,9 @@ export class EventService implements IEventService {
         lineHeight: cs.lineHeight,
         radius: cs.borderRadius,
       });
+      onHoverElementChange(el);
     } catch {
-      // エラーの場合は何もしない
+      onHoverElementChange(null);
     }
   }
 
@@ -68,6 +73,7 @@ export class EventService implements IEventService {
     inspectorMode: boolean,
     mousePosition: { x: number; y: number } | null,
     onTooltipChange: (data: TooltipData | null) => void,
+    onHoverElementChange: (element: Element | null) => void,
     onRebuild: () => void
   ): void {
     if (enabled && inspectorMode) {
@@ -79,7 +85,10 @@ export class EventService implements IEventService {
       if (el instanceof HTMLElement && !el.closest("#ti-toggle")) {
         try {
           const rect = el.getBoundingClientRect();
-          if (rect.width === 0 && rect.height === 0) return;
+          if (rect.width === 0 && rect.height === 0) {
+            onHoverElementChange(null);
+            return;
+          }
 
           const cs = getComputedStyle(el);
           const pad = toSides(cs, "padding");
@@ -96,20 +105,23 @@ export class EventService implements IEventService {
             lineHeight: cs.lineHeight,
             radius: cs.borderRadius,
           });
+          onHoverElementChange(el);
         } catch {
-          // エラーの場合は何もしない
+          onHoverElementChange(null);
         }
       }
     }
   }
 
-  handleResize(
+  createDebouncedResize(
     enabled: boolean,
     inspectorMode: boolean,
     onRebuild: () => void
-  ): void {
-    if (enabled && inspectorMode) {
-      onRebuild();
-    }
+  ): () => void {
+    return debounce(() => {
+      if (enabled && inspectorMode) {
+        onRebuild();
+      }
+    }, 100);
   }
 }

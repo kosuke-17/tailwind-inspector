@@ -8,8 +8,7 @@ export const useInspectorActions = (
     setEnabled: (value: boolean | ((prev: boolean) => boolean)) => void;
     setInspectorMode: (value: boolean | ((prev: boolean) => boolean)) => void;
     setLegendVisible: (value: boolean | ((prev: boolean) => boolean)) => void;
-  },
-  buildGlobalSoon: () => void
+  }
 ) => {
   const toggleEnabled = useCallback(() => {
     actions.setEnabled((prev) => !prev);
@@ -17,15 +16,9 @@ export const useInspectorActions = (
   }, [state.enabled, actions]);
 
   const toggleMode = useCallback(() => {
-    const newMode = !state.inspectorMode;
-    actions.setInspectorMode(newMode);
-    createToast(`Mode: ${newMode ? "All (全要素)" : "Hover"}`);
-
-    // Allモードに切り替えた場合、即座に描画を開始
-    if (newMode) {
-      setTimeout(() => buildGlobalSoon(), 0);
-    }
-  }, [state.inspectorMode, actions, buildGlobalSoon]);
+    actions.setInspectorMode((prev) => !prev);
+    createToast(`Mode: ${!state.inspectorMode ? "All (全要素)" : "Hover"}`);
+  }, [state.inspectorMode, actions]);
 
   const toggleLegend = useCallback(() => {
     actions.setLegendVisible((prev) => !prev);
