@@ -1,8 +1,10 @@
 // Chrome拡張機能のbackground script
-if (typeof chrome !== "undefined" && chrome.runtime) {
+console.log("Background script loading...");
+
+if (typeof chrome !== "undefined" && chrome.runtime && chrome.action) {
   chrome.runtime.onInstalled.addListener(() => {
     console.log("Tailwind Inspector Extension installed");
-    
+
     // 初期設定をchrome.storage.syncに保存
     chrome.storage.sync.set({
       "ti-enabled": false,
@@ -27,7 +29,7 @@ if (typeof chrome !== "undefined" && chrome.runtime) {
       );
       return true; // 非同期レスポンスのため
     }
-    
+
     if (request.type === "SET_STORAGE") {
       // chrome.storage.syncに値を保存
       chrome.storage.sync.set(request.data, () => {
@@ -39,14 +41,25 @@ if (typeof chrome !== "undefined" && chrome.runtime) {
 
   // アイコンクリック時の動作
   chrome.action.onClicked.addListener((tab) => {
+    console.log("Extension icon clicked", tab);
     if (tab.id) {
-      chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => {
-          // コンテンツスクリプトに拡張機能の有効/無効を切り替えるメッセージを送信
-          window.postMessage({ type: "TOGGLE_INSPECTOR" }, "*");
-        },
-      });
+      chrome.scripting
+        .executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            // コンテンツスクリプトに拡張機能の有効/無効を切り替えるメッセージを送信
+            window.postMessage({ type: "TOGGLE_INSPECTOR" }, "*");
+          },
+        })
+        .catch((error) => {
+          console.error("Script execution failed:", error);
+        });
     }
+  });
+} else {
+  console.error("Chrome extension APIs not available:", {
+    chrome: typeof chrome,
+    runtime: typeof chrome?.runtime,
+    action: typeof chrome?.action,
   });
 }

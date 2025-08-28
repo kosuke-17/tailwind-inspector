@@ -7,18 +7,29 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:unit": "vitest src/__tests__/unit",
+    "test:integration": "vitest src/__tests__/integration",
+    "test:e2e": "vitest src/__tests__/e2e",
+    "test:coverage": "vitest --coverage",
+    "test:watch": "vitest --watch"
   },
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/chrome": "^0.0.254",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
-    "@types/chrome": "^0.0.254",
     "@vitejs/plugin-react": "^4.2.1",
+    "jsdom": "^26.1.0",
     "typescript": "^5.2.2",
-    "vite": "^5.0.8"
+    "vite": "^5.0.8",
+    "vitest": "^3.2.4"
   }
 }

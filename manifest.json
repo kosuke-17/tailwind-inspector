@@ -4,6 +4,10 @@
   "version": "0.1",
   "description": "HoverでTailwindクラスとスタイルを確認できるツール",
   "permissions": ["activeTab", "scripting", "storage"],
+  "action": {
+    "default_popup": "",
+    "default_title": "Toggle Tailwind Inspector"
+  },
   "icons": {
     "48": "icons/icon48.png"
   },
