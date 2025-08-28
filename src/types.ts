@@ -48,3 +48,26 @@ export interface SideLabel {
   show: (top: number, left: number, text: string) => void;
   hide: () => void;
 }
+
+export interface ElementData {
+  element: Element;
+  rect: DOMRect;
+  padding: Sides;
+  margin: Sides;
+  rowGap: number;
+  columnGap: number;
+}
+
+export interface GapSegment {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  value: number;
+  orientation: "h" | "v";
+}
+
+export interface ElementGroup {
+  elements: ElementData[];
+  gapSegments: GapSegment[];
+}

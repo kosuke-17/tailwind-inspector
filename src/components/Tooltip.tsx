@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { TooltipData } from "../types";
 import { toHex, escapeHTML } from "../utils";
 
@@ -8,15 +8,23 @@ interface TooltipProps {
   visible: boolean;
 }
 
-export const Tooltip: React.FC<TooltipProps> = ({
+export const Tooltip: React.FC<TooltipProps> = React.memo(({
   data,
   position,
   visible,
 }) => {
   if (!visible || !data || !position) return null;
 
-  const fgHex = toHex(data.fg);
-  const bgHex = toHex(data.bg);
+  // 重い計算をメモ化
+  const computedColors = useMemo(() => ({
+    fgHex: toHex(data.fg),
+    bgHex: toHex(data.bg),
+  }), [data.fg, data.bg]);
+
+  const escapedClasses = useMemo(() => 
+    escapeHTML(data.classes || "(なし)"), 
+    [data.classes]
+  );
 
   return (
     <div
@@ -27,11 +35,11 @@ export const Tooltip: React.FC<TooltipProps> = ({
       }}
     >
       <div className='row'>
-        <strong>Tailwind</strong>: {escapeHTML(data.classes || "(なし)")}
+        <strong>Tailwind</strong>: {escapedClasses}
       </div>
       <div className='row'>
         <span className='chip' style={{ background: data.fg }}></span> Text:{" "}
-        {fgHex}
+        {computedColors.fgHex}
       </div>
       <div className='row'>
         <span
@@ -41,7 +49,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
             border: "1px solid rgba(255,255,255,0.2)",
           }}
         ></span>{" "}
-        BG: {bgHex}
+        BG: {computedColors.bgHex}
       </div>
       <div className='row'>
         Padding: {data.pad.t}/{data.pad.r}/{data.pad.b}/{data.pad.l}px
@@ -54,4 +62,4 @@ export const Tooltip: React.FC<TooltipProps> = ({
       </div>
     </div>
   );
-};
+});

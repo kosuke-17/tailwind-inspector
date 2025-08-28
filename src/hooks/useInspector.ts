@@ -1,49 +1,73 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { TooltipData } from "../types";
-import { toSides, extractTailwindClasses, createToast } from "../utils";
+import { TooltipData, ElementData, GapSegment } from "../types";
+import { 
+  toSides, 
+  extractTailwindClasses, 
+  createToast,
+  getSettings,
+  saveSetting,
+  addSettingsChangeListener,
+  calculateGapSegments,
+  MAX_ELEMENTS,
+  MAX_GAP_SEGMENTS
+} from "../utils";
+import { useThrottledCallback, useDebouncedCallback } from "./useThrottle";
 
 export const useInspector = () => {
-  const [enabled, setEnabled] = useState(
-    () => localStorage.getItem("ti-enabled") === "true"
-  );
-  const [inspectorMode, setInspectorMode] = useState(
-    () => localStorage.getItem("ti-inspector") === "true"
-  );
-  const [legendVisible, setLegendVisible] = useState(
-    () => localStorage.getItem("ti-legend-visible") !== "false"
-  );
+  const [enabled, setEnabled] = useState(false);
+  const [inspectorMode, setInspectorMode] = useState(false);
+  const [legendVisible, setLegendVisible] = useState(true);
   const [mousePosition, setMousePosition] = useState<{
     x: number;
     y: number;
   } | null>(null);
   const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);
   const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [hoverElement, setHoverElement] = useState<Element | null>(null);
+  const [globalElements, setGlobalElements] = useState<ElementData[]>([]);
+  const [globalGapSegments, setGlobalGapSegments] = useState<GapSegment[]>([]);
 
   const rafQueued = useRef(false);
   const globalLayerRef = useRef<HTMLDivElement>(null);
 
-  // 状態をlocalStorageに保存
+  // 初期設定の読み込み
   useEffect(() => {
-    localStorage.setItem("ti-enabled", String(enabled));
-  }, [enabled]);
+    getSettings().then((settings) => {
+      setEnabled(settings.enabled);
+      setInspectorMode(settings.inspectorMode);
+      setLegendVisible(settings.legendVisible);
+    });
+  }, []);
 
+  // 設定変更の監視
   useEffect(() => {
-    localStorage.setItem("ti-inspector", String(inspectorMode));
-  }, [inspectorMode]);
+    const removeListener = addSettingsChangeListener((changes) => {
+      if ("enabled" in changes) {
+        setEnabled(changes.enabled!);
+      }
+      if ("inspectorMode" in changes) {
+        setInspectorMode(changes.inspectorMode!);
+      }
+      if ("legendVisible" in changes) {
+        setLegendVisible(changes.legendVisible!);
+      }
+    });
 
-  useEffect(() => {
-    localStorage.setItem("ti-legend-visible", String(legendVisible));
-  }, [legendVisible]);
+    return removeListener;
+  }, []);
 
-  // マウス移動イベント
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
+  // マウス移動イベント（スロットリング適用）
+  const handleMouseMove = useThrottledCallback(
+    useCallback(
+      (e: MouseEvent) => {
+        setMousePosition({ x: e.clientX, y: e.clientY });
 
-      if (!enabled || inspectorMode) return;
-      setTooltipVisible(true);
-    },
-    [enabled, inspectorMode]
+        if (!enabled || inspectorMode) return;
+        setTooltipVisible(true);
+      },
+      [enabled, inspectorMode]
+    ),
+    16 // 60fps相当
   );
 
   // マウスオーバーイベント
@@ -56,7 +80,10 @@ export const useInspector = () => {
 
       try {
         const rect = el.getBoundingClientRect();
-        if (rect.width === 0 && rect.height === 0) return;
+        if (rect.width === 0 && rect.height === 0) {
+          setHoverElement(null);
+          return;
+        }
 
         const cs = getComputedStyle(el);
         const pad = toSides(cs, "padding");
@@ -73,49 +100,64 @@ export const useInspector = () => {
           lineHeight: cs.lineHeight,
           radius: cs.borderRadius,
         });
-      } catch {}
+        setHoverElement(el);
+      } catch {
+        setHoverElement(null);
+      }
     },
     [enabled, inspectorMode]
   );
 
-  // スクロール・リサイズイベント
-  const handleScroll = useCallback(() => {
-    if (enabled && inspectorMode) {
-      buildGlobalSoon();
-    }
-    if (enabled && !inspectorMode && mousePosition) {
-      const el = document.elementFromPoint(mousePosition.x, mousePosition.y);
-      if (el instanceof HTMLElement && !el.closest("#ti-toggle")) {
-        // 直接handleMouseOverの処理を実行
-        try {
-          const rect = el.getBoundingClientRect();
-          if (rect.width === 0 && rect.height === 0) return;
-
-          const cs = getComputedStyle(el);
-          const pad = toSides(cs, "padding");
-          const mar = toSides(cs, "margin");
-
-          const classes = extractTailwindClasses(el.className);
-          setTooltipData({
-            classes,
-            fg: cs.color,
-            bg: cs.backgroundColor,
-            pad,
-            mar,
-            fontSize: cs.fontSize,
-            lineHeight: cs.lineHeight,
-            radius: cs.borderRadius,
-          });
-        } catch {}
+  // スクロール・リサイズイベント（デバウンス適用）
+  const handleScroll = useDebouncedCallback(
+    useCallback(() => {
+      if (enabled && inspectorMode) {
+        buildGlobalSoon();
       }
-    }
-  }, [enabled, inspectorMode, mousePosition]);
+      if (enabled && !inspectorMode && mousePosition) {
+        const el = document.elementFromPoint(mousePosition.x, mousePosition.y);
+        if (el instanceof HTMLElement && !el.closest("#ti-toggle")) {
+          // 直接handleMouseOverの処理を実行
+          try {
+            const rect = el.getBoundingClientRect();
+            if (rect.width === 0 && rect.height === 0) {
+              setHoverElement(null);
+              return;
+            }
 
-  const handleResize = useCallback(() => {
-    if (enabled && inspectorMode) {
-      buildGlobalSoon();
-    }
-  }, [enabled, inspectorMode]);
+            const cs = getComputedStyle(el);
+            const pad = toSides(cs, "padding");
+            const mar = toSides(cs, "margin");
+
+            const classes = extractTailwindClasses(el.className);
+            setTooltipData({
+              classes,
+              fg: cs.color,
+              bg: cs.backgroundColor,
+              pad,
+              mar,
+              fontSize: cs.fontSize,
+              lineHeight: cs.lineHeight,
+              radius: cs.borderRadius,
+            });
+            setHoverElement(el);
+          } catch {
+            setHoverElement(null);
+          }
+        }
+      }
+    }, [enabled, inspectorMode, mousePosition]),
+    50 // 50ms デバウンス
+  );
+
+  const handleResize = useDebouncedCallback(
+    useCallback(() => {
+      if (enabled && inspectorMode) {
+        buildGlobalSoon();
+      }
+    }, [enabled, inspectorMode]),
+    100 // 100ms デバウンス
+  );
 
   // 全要素モードでの描画
   const buildGlobalSoon = useCallback(() => {
@@ -128,11 +170,76 @@ export const useInspector = () => {
   }, []);
 
   const buildGlobal = useCallback(() => {
-    if (!globalLayerRef.current) return;
+    if (!inspectorMode || !enabled) {
+      setGlobalElements([]);
+      setGlobalGapSegments([]);
+      return;
+    }
 
-    globalLayerRef.current.innerHTML = "";
-    // 全要素モードでの描画ロジックは後で実装
-  }, []);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const allElements = document.querySelectorAll("body *");
+    const elements: ElementData[] = [];
+    const gapSegments: GapSegment[] = [];
+    let drawn = 0;
+    let gapSegs = 0;
+
+    for (const el of allElements) {
+      if (!(el instanceof HTMLElement)) continue;
+      if (el.closest("#ti-toggle")) continue;
+      if (el.id && el.id.startsWith("ti-")) continue;
+      if ([...el.classList].some((c) => c.startsWith("ti-"))) continue;
+
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) continue;
+      if (rect.bottom < 0 || rect.right < 0 || rect.top > vh || rect.left > vw) continue;
+
+      const cs = getComputedStyle(el);
+      const pad = toSides(cs, "padding");
+      const mar = toSides(cs, "margin");
+      const rowGap = parseFloat(cs.rowGap) || 0;
+      const columnGap = parseFloat(cs.columnGap) || 0;
+
+      const hasPad = pad.t || pad.r || pad.b || pad.l;
+      const hasMar = mar.t || mar.r || mar.b || mar.l;
+      const hasGap = rowGap > 0 || columnGap > 0;
+
+      if (hasPad || hasMar || hasGap) {
+        elements.push({
+          element: el,
+          rect,
+          padding: pad,
+          margin: mar,
+          rowGap,
+          columnGap,
+        });
+
+        // Gap セグメントの計算
+        if (hasGap) {
+          const newGapSegments = calculateGapSegments(
+            el,
+            rect,
+            rowGap,
+            columnGap,
+            MAX_GAP_SEGMENTS - gapSegs
+          );
+          gapSegments.push(...newGapSegments);
+          gapSegs += newGapSegments.length;
+        }
+
+        drawn++;
+        if (drawn >= MAX_ELEMENTS || gapSegs >= MAX_GAP_SEGMENTS) {
+          createToast(
+            `Elements capped at ${MAX_ELEMENTS}, gap segments capped at ${MAX_GAP_SEGMENTS}`
+          );
+          break;
+        }
+      }
+    }
+
+    setGlobalElements(elements);
+    setGlobalGapSegments(gapSegments);
+  }, [inspectorMode, enabled]);
 
   // イベントリスナーの設定
   useEffect(() => {
@@ -172,19 +279,25 @@ export const useInspector = () => {
   }, [enabled, inspectorMode, buildGlobalSoon]);
 
   // トグル関数
-  const toggleEnabled = useCallback(() => {
-    setEnabled((prev) => !prev);
-    createToast(`Tailwind Inspector: ${!enabled ? "ON" : "OFF"}`);
+  const toggleEnabled = useCallback(async () => {
+    const newEnabled = !enabled;
+    setEnabled(newEnabled);
+    await saveSetting("enabled", newEnabled);
+    createToast(`Tailwind Inspector: ${newEnabled ? "ON" : "OFF"}`);
   }, [enabled]);
 
-  const toggleMode = useCallback(() => {
-    setInspectorMode((prev) => !prev);
-    createToast(`Mode: ${!inspectorMode ? "All (全要素)" : "Hover"}`);
+  const toggleMode = useCallback(async () => {
+    const newMode = !inspectorMode;
+    setInspectorMode(newMode);
+    await saveSetting("inspectorMode", newMode);
+    createToast(`Mode: ${newMode ? "All (全要素)" : "Hover"}`);
   }, [inspectorMode]);
 
-  const toggleLegend = useCallback(() => {
-    setLegendVisible((prev) => !prev);
-    createToast(`説明: ${!legendVisible ? "ON" : "OFF"}`);
+  const toggleLegend = useCallback(async () => {
+    const newVisible = !legendVisible;
+    setLegendVisible(newVisible);
+    await saveSetting("legendVisible", newVisible);
+    createToast(`説明: ${newVisible ? "ON" : "OFF"}`);
   }, [legendVisible]);
 
   return {
@@ -194,6 +307,9 @@ export const useInspector = () => {
     tooltipData,
     tooltipVisible,
     mousePosition,
+    hoverElement,
+    globalElements,
+    globalGapSegments,
     globalLayerRef,
     toggleEnabled,
     toggleMode,

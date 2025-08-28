@@ -2,7 +2,11 @@ import React from "react";
 import { ToggleButtons } from "./components/ToggleButtons";
 import { Legend } from "./components/Legend";
 import { Tooltip } from "./components/Tooltip";
+import { HoverRing } from "./components/HoverRing";
+import { SideLabels } from "./components/SideLabels";
+import { GlobalOverlay } from "./components/GlobalOverlay";
 import { useInspector } from "./hooks/useInspector";
+import { MIN_LABEL_THICKNESS } from "./utils";
 import "./styles.css";
 
 export const App: React.FC = () => {
@@ -13,6 +17,9 @@ export const App: React.FC = () => {
     tooltipData,
     tooltipVisible,
     mousePosition,
+    hoverElement,
+    globalElements,
+    globalGapSegments,
     globalLayerRef,
     toggleEnabled,
     toggleMode,
@@ -36,7 +43,15 @@ export const App: React.FC = () => {
           pointerEvents: "none",
           zIndex: 2147483647,
         }}
-      />
+      >
+        {/* All モード：全要素オーバーレイ */}
+        {inspectorMode && (
+          <GlobalOverlay 
+            elements={globalElements}
+            gapSegments={globalGapSegments}
+          />
+        )}
+      </div>
 
       {/* レジェンド */}
       <Legend visible={legendVisible} />
@@ -47,6 +62,23 @@ export const App: React.FC = () => {
         position={mousePosition}
         visible={tooltipVisible && !inspectorMode}
       />
+
+      {/* ホバーリング（Hover モード用） */}
+      <HoverRing
+        targetElement={hoverElement}
+        tooltipData={tooltipData}
+        visible={!inspectorMode && hoverElement !== null}
+      />
+
+      {/* サイドラベル（Hover モード用） */}
+      {!inspectorMode && hoverElement && tooltipData && (
+        <SideLabels
+          bounds={hoverElement.getBoundingClientRect()}
+          padding={tooltipData.pad}
+          margin={tooltipData.mar}
+          minThickness={MIN_LABEL_THICKNESS}
+        />
+      )}
 
       {/* トグルボタン群 */}
       <ToggleButtons
