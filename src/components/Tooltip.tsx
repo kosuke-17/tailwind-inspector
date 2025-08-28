@@ -8,7 +8,7 @@ interface TooltipProps {
   visible: boolean;
 }
 
-export const Tooltip: React.FC<TooltipProps> = ({
+export const Tooltip: React.FC<TooltipProps> = React.memo(({
   data,
   position,
   visible,
@@ -54,4 +54,4 @@ export const Tooltip: React.FC<TooltipProps> = ({
       </div>
     </div>
   );
-};
+});

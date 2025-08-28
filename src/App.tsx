@@ -2,6 +2,7 @@ import React from "react";
 import { ToggleButtons } from "./components/ToggleButtons";
 import { Legend } from "./components/Legend";
 import { Tooltip } from "./components/Tooltip";
+import { HoverRing } from "./components/HoverRing";
 import { useInspector } from "./hooks/useInspector";
 import "./styles.css";
 
@@ -13,6 +14,7 @@ export const App: React.FC = () => {
     tooltipData,
     tooltipVisible,
     mousePosition,
+    hoverElement,
     globalLayerRef,
     toggleEnabled,
     toggleMode,
@@ -40,6 +42,13 @@ export const App: React.FC = () => {
 
       {/* レジェンド */}
       <Legend visible={legendVisible} />
+
+      {/* ホバーリング */}
+      <HoverRing
+        targetElement={hoverElement}
+        tooltipData={tooltipData}
+        visible={!inspectorMode && hoverElement !== null}
+      />
 
       {/* ツールチップ */}
       <Tooltip
