@@ -20,8 +20,8 @@ export const useInspectorState = () => {
   const [inspectorMode, setInspectorMode] = useState(() =>
     getItem("ti-inspector", false)
   );
-  const [legendVisible, setLegendVisible] = useState(() =>
-    getItem("ti-legend-visible", true) // デフォルトをtrueに
+  const [legendVisible, setLegendVisible] = useState(
+    () => getItem("ti-legend-visible", true) // デフォルトをtrueに
   );
 
   // 状態をlocalStorageに保存

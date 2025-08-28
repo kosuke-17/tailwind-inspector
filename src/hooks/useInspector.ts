@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { TooltipData } from "../types";
-import { toSides, extractTailwindClasses, createToast, createSegmentWithLabel, debounce } from "../utils";
+import {
+  toSides,
+  extractTailwindClasses,
+  createToast,
+  createSegmentWithLabel,
+  debounce,
+} from "../utils";
 
 export const useInspector = () => {
   const [enabled, setEnabled] = useState(() => {
@@ -300,9 +306,7 @@ export const useInspector = () => {
 
       drawn++;
       if (drawn >= 300 || gapSegs >= 600) {
-        createToast(
-          `Elements capped at 300, gap segments capped at 600`
-        );
+        createToast(`Elements capped at 300, gap segments capped at 600`);
         break;
       }
     }
