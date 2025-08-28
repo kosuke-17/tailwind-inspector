@@ -19,11 +19,17 @@ Chrome への読み込み
 2. Chrome で「拡張機能 > デベロッパーモード > パッケージ化されていない拡張機能を読み込む」
 3. リポジトリルート（`manifest.json` があるディレクトリ）を選択
 
+## 使用方法
+1. Chrome 拡張機能としてインストール
+2. 右下のボタンで Inspector を ON/OFF
+3. Mode ボタンで Hover/All を切り替え
+4. Legend ボタンで説明表示の有無を切り替え
+
 ## 配置・エントリ
 - `manifest.json`
   - `content_scripts`: `dist/content.js` と `dist/content.css` を全 URL に注入
-  - 権限: `activeTab`, `scripting`
-  - 備考: 現状 `background` セクションは未設定（`src/background.ts` はビルド対象だが未配線）
+  - 権限: `activeTab`, `scripting`, `storage`
+  - `background.service_worker`: `dist/background.js`（拡張インストール時の初期化やメッセージ処理を担当）
 
 - `src/content.tsx`
   - `document.documentElement` 直下に `<div id="ti-react-root" />` を生成し、React ルートをマウント
@@ -35,6 +41,7 @@ Chrome への読み込み
   - 構成:
     - グローバルレイヤ（`<div id="ti-global" ref={globalLayerRef} />`）
     - レジェンド（`Legend`）
+    - ホバーリング（`HoverRing`）
     - ツールチップ（`Tooltip`）
     - 右下トグルボタン群（`ToggleButtons`）
   - `enabled` が false の場合は UI を描画しない
@@ -58,42 +65,37 @@ Chrome への読み込み
     - Text 色 / BG 色（16進変換表示）
     - Padding / Margin（上下左右 px）
     - Font Size / Line Height / Border Radius
+- `components/HoverRing.tsx`
+  - 対象要素の `padding`/`margin` を色付きセグメントで表示し、一定以上の厚みがあれば数値ラベルを付与
 
 - `styles.css`
   - ツールチップ、レジェンド、右下ボタン群のスタイル
   - 最前面表示のため `z-index: 2147483647` を採用
 
-## ロジック（`hooks/useInspector.ts`）
-状態（persist は localStorage）
-- `enabled`: 拡張の有効/無効（`ti-enabled`）
-- `inspectorMode`: `true`=All（全要素）/ `false`=Hover（`ti-inspector`）
-- `legendVisible`: レジェンド表示（`ti-legend-visible`）
-- `mousePosition`: カーソル座標
-- `tooltipData`/`tooltipVisible`: ツールチップ表示用
-- `globalLayerRef`: 全要素モードの描画ターゲット
+## ロジック構成
+### hooks
+- `useInspector.ts`
+  - `useInspectorRefactored` を再エクスポートし、UI から利用されるエントリポイント
+- `useInspectorState.ts`
+  - `enabled` / `inspectorMode` / `legendVisible` を localStorage と同期
+- `useTooltipState.ts`
+  - `tooltipData` や `mousePosition`、`hoverElement` を管理
+- `useVisualizationController.ts`
+  - `VisualizationService` を使い全要素モードの描画を制御
+- `useInspectorActions.ts`
+  - トグル操作を定義し、`createToast` で通知
 
-イベントと挙動
-- `mousemove`
-  - カーソル追従座標を保持
-  - Hover モード時のみツールチップ可視化
-- `mouseover`（capture）
-  - Hover モード時、`#ti-toggle` 直系要素を除外して対象要素を検査
-  - `getComputedStyle` と `toSides` で Padding/Margin を取得
-  - `extractTailwindClasses` で Tailwind らしき class 名のみ抽出
-  - `TooltipData` を更新
-- `scroll`/`resize`
-  - All モード時は `buildGlobalSoon()` をスケジュール
-  - Hover モード時は `elementFromPoint` で再取得してツールチップ更新
-- `MutationObserver`
-  - All モード時の DOM 変化で再描画をスケジュール
-- トグル操作
-  - それぞれ localStorage に即時保存＋トースト通知（`createToast`）
+### services
+- `VisualizationService.ts`
+  - padding/margin/gap/outline のオーバーレイ生成と全要素描画
+- `EventService.ts`
+  - `handleMouseMove` / `handleMouseOver` / `handleScroll` / `createDebouncedResize` でマウス座標や要素情報を取得し、`TooltipData` を算出・再描画をトリガー
+- `DOMService.ts`
+  - DOM イベントリスナーと `MutationObserver` のセットアップ
 
-描画
-- Hover モード
-  - ツールチップのみ（アウトラインやリングは現行実装には未搭載）
-- All モード
-  - `buildGlobal()` はプレースホルダ（今後実装）
+### `useInspectorRefactored.ts`
+- 上記フックとサービスを統合し、イベント処理と状態更新を一元管理
+- 依存性注入によりテストや拡張が容易
 
 ## ユーティリティ（`utils.ts`）
 - `toSides(cs, prop)`：CSSStyleDeclaration から `Top/Right/Bottom/Left` を数値化
@@ -101,7 +103,9 @@ Chrome への読み込み
 - `toHex(color)`：`rgb(a)` → `#RRGGBB(AA)` 変換
 - `escapeHTML(s)`：安全な HTML エスケープ
 - `groupBy(items, closeFn)`：距離近似を定義可能なグルーピング（将来の All モードで使用想定）
+- `createSegmentWithLabel(...)`：色付きセグメントとpxラベルを生成
 - `createToast(text)`：右下の簡易トースト表示
+- `throttle(func, delay)` / `debounce(func, delay)`：イベント頻度制御
 - 定数：`MIN_LABEL_THICKNESS`, `MAX_ELEMENTS`, `MAX_GAP_SEGMENTS`, `ROW_EPS`, `COL_EPS`（将来の可視化で使用）
 
 ## 型定義（`types.ts` 抜粋）
@@ -114,13 +118,12 @@ Chrome への読み込み
   - 旧実装（純 DOM/CSS）で、ホバーのリング描画や All モードの可視化ロジックが含まれる
   - 現在の React 実装では未統合だが、移植の参考資料
 - `src/background.ts`
-  - `onInstalled` ログ、および `GET_STORAGE` メッセージに対して localStorage 値を返すコード
-  - Manifest に background の定義が無いため、現状は未使用
+  - インストール時に `chrome.storage.sync` を初期化し、`GET_STORAGE`/`SET_STORAGE` メッセージやアイコンクリックを処理
+  - 現在の UI は localStorage を直接参照しており、サービスワーカーとの連携は未完了
 
 ## 制限事項 / 既知の課題
 - All モードの可視化（`buildGlobal()`）が未実装
-- 背景スクリプトは Manifest 未登録のため無効（`localStorage` は MV3 Service Worker では利用不可）
-- ホバー時の視覚リング（padding/margin/gap の帯やアウトライン）は現行未提供（ツールチップのみ）
+- 背景サービスワーカーと UI 側の状態管理が分離しており（`chrome.storage.sync` と `localStorage`）、同期方法が未整備
 - 極端に複雑な DOM でのパフォーマンスは未検証（将来の All モードでは `MAX_*` 定数で制御予定）
 
 ## セキュリティ / アクセシビリティ
@@ -130,12 +133,47 @@ Chrome への読み込み
 
 ## 今後の拡張（提案）
 1. All モードの実装
-   - `old_content.js` のアルゴリズムを `useInspector` に移植
+   - `old_content.js` のアルゴリズムを `VisualizationService` などに移植
    - 要素列挙の上限やグルーピング、Gap 帯の分割などを React 化
-2. Hover モードのリング描画
-   - `outline`, `pad/mar` リング、サイドラベルを React/DOM で実装
-3. Background の整理
-   - Manifest に `background.service_worker` を定義するか、未使用ならビルド対象から除外
-4. 軽量化・最適化
+2. Background との連携強化
+   - `chrome.storage.sync` と UI 側 `localStorage` の統一、不要であれば背景スクリプトの簡素化
+3. 軽量化・最適化
    - スロットリング/デバウンス、アイドル時レイアウト計測の調整
+
+## 依存関係ダイアグラム
+```mermaid
+graph TD
+  subgraph Components
+    App
+    ToggleButtons
+    Legend
+    Tooltip
+    HoverRing
+  end
+  subgraph Hooks
+    useInspector
+    useInspectorState
+    useTooltipState
+    useVisualizationController
+    useInspectorActions
+  end
+  subgraph Services
+    VisualizationService
+    EventService
+    DOMService
+  end
+  App --> useInspector
+  App --> ToggleButtons
+  App --> Legend
+  App --> Tooltip
+  App --> HoverRing
+  useInspector --> useInspectorState
+  useInspector --> useTooltipState
+  useInspector --> useVisualizationController
+  useInspector --> useInspectorActions
+  useInspector --> VisualizationService
+  useInspector --> EventService
+  useInspector --> DOMService
+  useVisualizationController --> VisualizationService
+```
 
