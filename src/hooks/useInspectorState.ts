@@ -6,20 +6,22 @@ export interface InspectorState {
   legendVisible: boolean;
 }
 
-const getItem = (key: string) => {
-  return localStorage.getItem(key) === "true";
+const getItem = (key: string, defaultValue: boolean = false) => {
+  const item = localStorage.getItem(key);
+  if (item === null) return defaultValue;
+  return item === "true";
 };
 const setItem = (key: string, value: boolean) => {
   localStorage.setItem(key, String(value));
 };
 
 export const useInspectorState = () => {
-  const [enabled, setEnabled] = useState(() => getItem("ti-enabled"));
+  const [enabled, setEnabled] = useState(() => getItem("ti-enabled", true)); // デフォルトをtrueに
   const [inspectorMode, setInspectorMode] = useState(() =>
-    getItem("ti-inspector")
+    getItem("ti-inspector", false)
   );
   const [legendVisible, setLegendVisible] = useState(() =>
-    getItem("ti-legend-visible")
+    getItem("ti-legend-visible", true) // デフォルトをtrueに
   );
 
   // 状態をlocalStorageに保存

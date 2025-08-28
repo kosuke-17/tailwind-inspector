@@ -21,43 +21,9 @@ export const App: React.FC = () => {
     toggleLegend,
   } = useInspector();
 
-  if (!enabled) return null;
-
   return (
     <>
-      {/* グローバルレイヤー（全要素モード用） */}
-      <div
-        ref={globalLayerRef}
-        id='ti-global'
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: 0,
-          height: 0,
-          pointerEvents: "none",
-          zIndex: 2147483647,
-        }}
-      />
-
-      {/* レジェンド */}
-      <Legend visible={legendVisible} />
-
-      {/* ホバーリング */}
-      <HoverRing
-        targetElement={hoverElement}
-        tooltipData={tooltipData}
-        visible={!inspectorMode && hoverElement !== null}
-      />
-
-      {/* ツールチップ */}
-      <Tooltip
-        data={tooltipData}
-        position={mousePosition}
-        visible={tooltipVisible && !inspectorMode}
-      />
-
-      {/* トグルボタン群 */}
+      {/* トグルボタン群 - 常に表示してUXを改善 */}
       <ToggleButtons
         enabled={enabled}
         inspectorMode={inspectorMode}
@@ -66,6 +32,43 @@ export const App: React.FC = () => {
         onToggleMode={toggleMode}
         onToggleLegend={toggleLegend}
       />
+
+      {/* Inspector機能がenabledの場合のみ以下を表示 */}
+      {enabled && (
+        <>
+          {/* グローバルレイヤー（全要素モード用） */}
+          <div
+            ref={globalLayerRef}
+            id='ti-global'
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: 0,
+              height: 0,
+              pointerEvents: "none",
+              zIndex: 2147483647,
+            }}
+          />
+
+          {/* レジェンド */}
+          <Legend visible={legendVisible} />
+
+          {/* ホバーリング */}
+          <HoverRing
+            targetElement={hoverElement}
+            tooltipData={tooltipData}
+            visible={!inspectorMode && hoverElement !== null}
+          />
+
+          {/* ツールチップ */}
+          <Tooltip
+            data={tooltipData}
+            position={mousePosition}
+            visible={tooltipVisible && !inspectorMode}
+          />
+        </>
+      )}
     </>
   );
 };
