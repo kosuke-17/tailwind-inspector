@@ -1,6 +1,6 @@
 import { Sides } from "./types";
 
-export const MIN_LABEL_THICKNESS = 8; // 8pxのmarginでもラベルを表示
+export const MIN_LABEL_THICKNESS = 4; // 4pxのmarginでもラベルを表示
 export const MAX_ELEMENTS = 300;
 export const MAX_GAP_SEGMENTS = 600;
 export const ROW_EPS = 6;
@@ -238,7 +238,7 @@ export function createSegmentWithLabel(
       whiteSpace: "nowrap",
       writingMode: orientation === "v" ? "vertical-lr" : "initial",
     });
-    lbl.textContent = `${Math.round(valuePx)}px`;
+    lbl.textContent = `${Math.round(valuePx)}`;
     d.appendChild(lbl);
   }
   return d;
