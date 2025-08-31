@@ -12,15 +12,27 @@ import {
 
 export const useInspector = () => {
   const [enabled, setEnabled] = useState(() => {
-    const stored = localStorage.getItem("ti-enabled");
-    return stored === null ? true : stored === "true"; // デフォルトをtrueに
+    try {
+      const stored = localStorage.getItem("ti-enabled");
+      return stored === null || stored === undefined ? true : stored === "true"; // デフォルトをtrueに
+    } catch {
+      return true; // localStorage アクセスエラー時のフォールバック
+    }
   });
-  const [inspectorMode, setInspectorMode] = useState(
-    () => localStorage.getItem("ti-inspector") === "true"
-  );
+  const [inspectorMode, setInspectorMode] = useState(() => {
+    try {
+      return localStorage.getItem("ti-inspector") === "true";
+    } catch {
+      return false; // localStorage アクセスエラー時のフォールバック
+    }
+  });
   const [legendVisible, setLegendVisible] = useState(() => {
-    const stored = localStorage.getItem("ti-legend-visible");
-    return stored === null ? true : stored !== "false"; // デフォルトをtrueに
+    try {
+      const stored = localStorage.getItem("ti-legend-visible");
+      return stored === null || stored === undefined ? true : stored !== "false"; // デフォルトをtrueに
+    } catch {
+      return true; // localStorage アクセスエラー時のフォールバック
+    }
   });
   const [mousePosition, setMousePosition] = useState<{
     x: number;
@@ -35,15 +47,27 @@ export const useInspector = () => {
 
   // 状態をlocalStorageに保存
   useEffect(() => {
-    localStorage.setItem("ti-enabled", String(enabled));
+    try {
+      localStorage.setItem("ti-enabled", String(enabled));
+    } catch {
+      // localStorage アクセスエラーを無視
+    }
   }, [enabled]);
 
   useEffect(() => {
-    localStorage.setItem("ti-inspector", String(inspectorMode));
+    try {
+      localStorage.setItem("ti-inspector", String(inspectorMode));
+    } catch {
+      // localStorage アクセスエラーを無視
+    }
   }, [inspectorMode]);
 
   useEffect(() => {
-    localStorage.setItem("ti-legend-visible", String(legendVisible));
+    try {
+      localStorage.setItem("ti-legend-visible", String(legendVisible));
+    } catch {
+      // localStorage アクセスエラーを無視
+    }
   }, [legendVisible]);
 
   // マウス移動イベント

@@ -1,4 +1,5 @@
 import { Sides } from "./types";
+import { LegacyFallbackService } from "./core/domain/service/LegacyFallbackService";
 
 export const MIN_LABEL_THICKNESS = 4; // 4pxのmarginでもラベルを表示
 export const MAX_ELEMENTS = 300;
@@ -7,103 +8,19 @@ export const ROW_EPS = 6;
 export const COL_EPS = 6;
 
 export function toSides(cs: CSSStyleDeclaration, prop: string): Sides {
-  return {
-    t: parseFloat(cs[`${prop}Top` as keyof CSSStyleDeclaration] as string) || 0,
-    r:
-      parseFloat(cs[`${prop}Right` as keyof CSSStyleDeclaration] as string) ||
-      0,
-    b:
-      parseFloat(cs[`${prop}Bottom` as keyof CSSStyleDeclaration] as string) ||
-      0,
-    l:
-      parseFloat(cs[`${prop}Left` as keyof CSSStyleDeclaration] as string) || 0,
-  };
+  return LegacyFallbackService.toSides(cs, prop);
 }
 
 export function extractTailwindClasses(className: string): string {
-  if (!className) return "";
-  return String(className)
-    .split(/\s+/)
-    .filter((c) => /^[a-z0-9:_\/-]+$/i.test(c))
-    .join(" ");
+  return LegacyFallbackService.extractTailwindClasses(className);
 }
 
 /**
  * Tailwind CSSが読み込まれているかどうかを検出
  */
 export function detectTailwindCSS(): boolean {
-  try {
-    // 既知のTailwindクラスでテスト要素を作成
-    const testElement = document.createElement("div");
-    testElement.className = "m-4 p-4 bg-red-500";
-    testElement.style.position = "absolute";
-    testElement.style.visibility = "hidden";
-    testElement.style.pointerEvents = "none";
-
-    document.body.appendChild(testElement);
-    const computedStyle = getComputedStyle(testElement);
-
-    // Tailwindの具体的な値をチェック: margin: 1rem (16px), padding: 1rem (16px)
-    const marginValue = parseFloat(computedStyle.marginTop);
-    const paddingValue = parseFloat(computedStyle.paddingTop);
-    const backgroundColor = computedStyle.backgroundColor;
-
-    document.body.removeChild(testElement);
-
-    // より厳密な条件: 16pxの値またはred色が確実に適用されている
-    const hasCorrectMargin = marginValue === 16;
-    const hasCorrectPadding = paddingValue === 16;
-    const hasRedBackground =
-      backgroundColor.includes("rgb(239, 68, 68)") || // bg-red-500
-      backgroundColor.includes("rgb(220, 38, 38)") ||
-      backgroundColor.includes("#ef4444") ||
-      backgroundColor.includes("#dc2626");
-
-    return hasCorrectMargin || hasCorrectPadding || hasRedBackground;
-  } catch {
-    return false;
-  }
+  return LegacyFallbackService.detectTailwindCSS();
 }
-
-/**
- * Tailwind CSSが読み込まれていない場合のフォールバック値マッピング
- */
-const TAILWIND_FALLBACK_MAP: Record<
-  string,
-  { margin?: number; padding?: number }
-> = {
-  // Margin classes
-  "m-0": { margin: 0 },
-  "m-1": { margin: 4 },
-  "m-2": { margin: 8 },
-  "m-3": { margin: 12 },
-  "m-4": { margin: 16 },
-  "m-5": { margin: 20 },
-  "m-6": { margin: 24 },
-  "m-8": { margin: 32 },
-  "m-10": { margin: 40 },
-  "m-12": { margin: 48 },
-  "m-16": { margin: 64 },
-  "m-20": { margin: 80 },
-  "m-24": { margin: 96 },
-  "m-32": { margin: 128 },
-
-  // Padding classes
-  "p-0": { padding: 0 },
-  "p-1": { padding: 4 },
-  "p-2": { padding: 8 },
-  "p-3": { padding: 12 },
-  "p-4": { padding: 16 },
-  "p-5": { padding: 20 },
-  "p-6": { padding: 24 },
-  "p-8": { padding: 32 },
-  "p-10": { padding: 40 },
-  "p-12": { padding: 48 },
-  "p-16": { padding: 64 },
-  "p-20": { padding: 80 },
-  "p-24": { padding: 96 },
-  "p-32": { padding: 128 },
-};
 
 /**
  * TailwindクラスからCSSが適用されていない場合の推定値を取得
@@ -112,34 +29,7 @@ export function getTailwindFallbackValues(className: string): {
   margin: Sides;
   padding: Sides;
 } {
-  const classes = extractTailwindClasses(className).split(/\s+/);
-  let marginValue = 0;
-  let paddingValue = 0;
-
-  for (const cls of classes) {
-    // Remove responsive and state prefixes (e.g., "sm:", "hover:")
-    const baseClass = cls.replace(/^[a-z]+:/, "");
-    const fallback = TAILWIND_FALLBACK_MAP[baseClass];
-
-    if (fallback) {
-      if (fallback.margin !== undefined) {
-        marginValue = fallback.margin;
-      }
-      if (fallback.padding !== undefined) {
-        paddingValue = fallback.padding;
-      }
-    }
-  }
-
-  return {
-    margin: { t: marginValue, r: marginValue, b: marginValue, l: marginValue },
-    padding: {
-      t: paddingValue,
-      r: paddingValue,
-      b: paddingValue,
-      l: paddingValue,
-    },
-  };
+  return LegacyFallbackService.getTailwindFallbackValues(className);
 }
 
 export function toHex(color: string): string {
