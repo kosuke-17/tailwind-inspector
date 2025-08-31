@@ -8,7 +8,7 @@ import {
   createToast,
   detectTailwindCSS,
   getTailwindFallbackValues,
-} from "../../utils";
+} from "./utils";
 
 describe("Utils Functions", () => {
   describe("toSides", () => {
@@ -125,7 +125,8 @@ describe("Utils Functions", () => {
     it("should handle edge cases in rgb parsing", () => {
       expect(toHex("rgb(0, 0, 0)")).toBe("#000000");
       expect(toHex("rgb(255, 255, 255)")).toBe("#ffffff");
-      expect(toHex("rgb(128.5, 64.7, 192.3)")).toBe("#8041c0");
+      // Math.round()により 128.5->129(0x81), 64.7->65(0x41), 192.3->192(0xc0)
+      expect(toHex("rgb(128.5, 64.7, 192.3)")).toBe("#8141c0");
     });
   });
 

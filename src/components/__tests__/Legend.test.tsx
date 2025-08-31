@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { Legend } from "../../../components/Legend";
+import { Legend } from "../Legend";
 
 // LocalStorageのモック
 const mockLocalStorage = (() => {

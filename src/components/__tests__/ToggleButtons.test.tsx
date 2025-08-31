@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { ToggleButtons } from "../../../components/ToggleButtons";
+import { ToggleButtons } from "../ToggleButtons";
 import { memo } from "react";
 
 describe("ToggleButtons Component", () => {

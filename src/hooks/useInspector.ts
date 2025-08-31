@@ -29,7 +29,9 @@ export const useInspector = () => {
   const [legendVisible, setLegendVisible] = useState(() => {
     try {
       const stored = localStorage.getItem("ti-legend-visible");
-      return stored === null || stored === undefined ? true : stored !== "false"; // デフォルトをtrueに
+      return stored === null || stored === undefined
+        ? true
+        : stored !== "false"; // デフォルトをtrueに
     } catch {
       return true; // localStorage アクセスエラー時のフォールバック
     }
